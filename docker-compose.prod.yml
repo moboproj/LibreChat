@@ -1,0 +1,9 @@
+services:
+  api:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.librechat.rule=Host(`${DOMAIN_NAME}`)"
+      - "traefik.http.routers.librechat.entrypoints=websecure"
+      - "traefik.http.routers.librechat.tls.certresolver=myresolver"
+      # Importante: LibreChat por defecto usa el 3080
+      - "traefik.http.services.librechat.loadbalancer.server.port=3080"
