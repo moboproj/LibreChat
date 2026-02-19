@@ -1,0 +1,95 @@
+services:
+
+  # Montar el archivo de configuración de LibreChat
+  api:
+    volumes:
+      - type: bind
+        source: ./librechat.yaml
+        target: /app/librechat.yaml
+
+  # ADD MONGO-EXPRESS
+  mongo-express:
+    image: mongo-express
+    container_name: mongo-express
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_USERNAME}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_PASSWORD}
+    ports:
+      - '8081:8081'
+    depends_on:
+      - mongodb
+    restart: always
+    networks:
+      - librechat-internal
+
+  # ADD MONGODB REST API - Express wrapper
+  mongodb-api:
+    image: node:20-alpine
+    container_name: mongodb-api
+    working_dir: /app
+    volumes:
+      - ./mongodb-api:/app
+    environment:
+      MONGODB_URI: ${MONGO_URI}
+      PORT: 8082
+    ports:
+      - '8082:8082'
+    command: sh -c "npm install express mongodb cors dotenv bcryptjs && node server.js"
+    depends_on:
+      - mongodb
+    restart: always
+    networks:
+      - librechat-internal
+
+  # ADD ADMIN PANEL (Vue)
+  admin-panel:
+    build:
+      context: ./admin-panel
+      dockerfile: Dockerfile
+    container_name: admin-panel
+    ports:
+      - '5173:5173'
+    environment:
+      VITE_API_URL: http://mongodb-api:8082
+    depends_on:
+      - mongodb-api
+    restart: always
+    networks:
+      - librechat-internal
+
+  # BACKUP SERVICES
+  mongodb-backup:
+    container_name: mongodb-backup
+    image: tiredofit/mongodb-backup:latest
+    restart: always
+    environment:
+      - MONGODB_HOST=mongodb
+      - MONGODB_PORT=27017
+      - MONGODB_DB=LibreChat
+      - BACKUP_INTERVAL=1440
+      - BACKUP_RETAIN=7
+    volumes:
+      - ./backups/mongodb:/backup
+    depends_on:
+      - mongodb
+    networks:
+      - librechat-internal
+
+  postgres-backup:
+    container_name: postgres-backup
+    image: prodrigestivill/postgres-backup-local
+    restart: always
+    environment:
+      - POSTGRES_HOST=vectordb
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - BACKUP_KEEP_DAYS=7
+      - BACKUP_INTERVAL=daily
+    volumes:
+      - ./backups/postgres:/backups
+    depends_on:
+      - vectordb
+    networks:
+      - librechat-internal
