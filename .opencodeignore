@@ -1,0 +1,23 @@
+# Sistema
+.git
+.docker
+.vscode
+.opencode
+.claude
+.motd_shown
+
+# Datos
+meili_data_*
+redis-config/certs
+*.db
+*.db-*
+
+# Docker & Config
+Dockerfile*
+docker-compose*.yml
+*.yaml
+
+# Archivos innecesarios
+*.log
+*.lock
+.DS_Store

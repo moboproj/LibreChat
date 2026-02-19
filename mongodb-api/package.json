@@ -1,0 +1,24 @@
+{
+  "name": "mongodb-rest-api",
+  "version": "1.0.0",
+  "description": "Simple MongoDB REST API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "mongodb",
+    "rest",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.1",
+    "mongodb": "^6.21.0"
+  }
+}
