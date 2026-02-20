@@ -79,33 +79,6 @@
         </form>
       </div>
     </div>
-
-          <div class="permissions-editor">
-            <label>Configuración de Permisos</label>
-            <div class="perm-grid-editor">
-              <div v-for="(actions, type) in permissionMap" :key="type" class="perm-type-section">
-                <h6>{{ type }}</h6>
-                <div class="actions-grid">
-                  <label v-for="action in actions" :key="action" class="checkbox-label">
-                    <input type="checkbox" v-model="formData.permissions[type][action]" />
-                    {{ action }}
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary">
-              {{ editingRole ? 'Actualizar' : 'Crear' }}
-            </button>
-            <button type="button" class="btn btn-secondary" @click="showCreateForm = false">
-              Cancelar
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
   </div>
 </template>
 

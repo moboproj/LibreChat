@@ -1,0 +1,9 @@
+services:
+  api:
+    networks:
+      - librechat-internal
+
+networks:
+  traefik-public:
+    external: false
+    name: traefik-public-disabled
