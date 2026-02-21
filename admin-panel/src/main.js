@@ -6,7 +6,7 @@ import axios from 'axios'
 const app = createApp(App)
 
 // Configure axios
-axios.defaults.baseURL = process.env.VITE_API_URL || 'http://localhost:8082'
+axios.defaults.baseURL = ''
 
 app.config.globalProperties.$axios = axios
 app.use(router)

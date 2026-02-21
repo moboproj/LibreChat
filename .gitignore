@@ -1,5 +1,8 @@
 ### node etc ###
 
+# Backups
+backups/
+
 # Logs
 data-node
 meili_data*

@@ -3,12 +3,18 @@ import Dashboard from '../views/Dashboard.vue'
 import Users from '../views/Users.vue'
 import MCPServers from '../views/MCPServers.vue'
 import Roles from '../views/Roles.vue'
+import Statistics from '../views/Statistics.vue'
 
 const routes = [
   {
     path: '/',
     name: 'Dashboard',
     component: Dashboard
+  },
+  {
+    path: '/statistics',
+    name: 'Statistics',
+    component: Statistics
   },
   {
     path: '/users',

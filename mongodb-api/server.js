@@ -54,6 +54,94 @@ app.get('/api/collections', async (req, res) => {
   }
 });
 
+// ========== STATS ENDPOINT ==========
+app.get('/api/stats', async (req, res) => {
+  try {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [
+      totalUsers,
+      totalMessages,
+      totalConversations,
+      totalFiles,
+      totalAgents,
+      totalTransactions,
+      messagesByDay,
+      activeUsersByDay,
+      messagesByModel,
+      messagesByEndpoint,
+      tokensByType,
+      topUsersByTokens,
+      newUsersLast30Days,
+      messagesLast7Days,
+    ] = await Promise.all([
+      db.collection('users').countDocuments(),
+      db.collection('messages').countDocuments(),
+      db.collection('conversations').countDocuments(),
+      db.collection('files').countDocuments(),
+      db.collection('agents').countDocuments(),
+      db.collection('transactions').countDocuments(),
+
+      db.collection('messages').aggregate([
+        { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]).toArray(),
+
+      db.collection('messages').aggregate([
+        { $match: { isCreatedByUser: true, createdAt: { $gte: thirtyDaysAgo } } },
+        { $group: { _id: { date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, user: '$user' } } },
+        { $group: { _id: '$_id.date', activeUsers: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]).toArray(),
+
+      db.collection('messages').aggregate([
+        { $match: { model: { $ne: null }, isCreatedByUser: false } },
+        { $group: { _id: '$model', count: { $sum: 1 }, tokens: { $sum: '$tokenCount' } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 },
+      ]).toArray(),
+
+      db.collection('conversations').aggregate([
+        { $group: { _id: '$endpoint', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+      ]).toArray(),
+
+      db.collection('transactions').aggregate([
+        { $group: { _id: '$tokenType', total: { $sum: { $abs: '$rawAmount' } } } },
+      ]).toArray(),
+
+      db.collection('transactions').aggregate([
+        { $group: { _id: '$user', totalTokens: { $sum: { $abs: '$rawAmount' } } } },
+        { $sort: { totalTokens: -1 } },
+        { $limit: 8 },
+        { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'userInfo' } },
+        { $project: { totalTokens: 1, name: { $arrayElemAt: ['$userInfo.name', 0] }, email: { $arrayElemAt: ['$userInfo.email', 0] } } },
+      ]).toArray(),
+
+      db.collection('users').countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+
+      db.collection('messages').countDocuments({ isCreatedByUser: true, createdAt: { $gte: sevenDaysAgo } }),
+    ]);
+
+    res.json({
+      totals: { totalUsers, totalMessages, totalConversations, totalFiles, totalAgents, totalTransactions },
+      messagesByDay,
+      activeUsersByDay,
+      messagesByModel,
+      messagesByEndpoint,
+      tokensByType,
+      topUsersByTokens,
+      newUsersLast30Days,
+      messagesLast7Days,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GET documents from a collection
 app.get('/api/:collection', async (req, res) => {
   try {

@@ -3,6 +3,15 @@ services:
     networks:
       - librechat-internal
 
+  admin-panel:
+    build:
+      context: ./admin-panel
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./admin-panel/src:/app/src
+      - ./admin-panel/index.html:/app/index.html
+      - ./admin-panel/vite.config.js:/app/vite.config.js
+
 networks:
   traefik-public:
     external: false

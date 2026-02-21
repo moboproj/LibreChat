@@ -58,6 +58,7 @@ export default {
     return {
       routes: [
         { path: '/', name: '📊 Dashboard' },
+        { path: '/statistics', name: '📈 Estadísticas' },
         { path: '/users', name: '👥 Usuarios' },
         { path: '/mcp-servers', name: '🔌 MCP Servers' },
         { path: '/roles', name: '🔐 Roles' },
