@@ -1,31 +1,37 @@
 <template>
   <div class="app">
-    <!-- Login Overlay -->
-    <div v-if="requiresAuth && !isAuthenticated" class="login-overlay">
-      <div class="login-box">
-        <h2>LibreChat Admin</h2>
-        <p>Introduce la contraseña de administrador</p>
-        <form @submit.prevent="login">
-          <input
-            v-model="loginEmail"
-            type="email"
-            placeholder="Email"
-            required
-            autoFocus
-          />
-          <input
-            v-model="loginPassword"
-            type="password"
-            placeholder="Contraseña"
-            required
-          />
-          <button type="submit" class="btn btn-primary">Entrar</button>
-          <p v-if="loginError" class="error">{{ loginError }}</p>
-        </form>
-      </div>
+    <!-- Pantalla de Carga Inicial -->
+    <div v-if="isInitializing" class="initializing-overlay">
+      <div class="spinner"></div>
     </div>
 
     <template v-else>
+      <!-- Login Overlay -->
+      <div v-if="requiresAuth && !isAuthenticated" class="login-overlay">
+        <div class="login-box">
+          <h2>LibreChat Admin</h2>
+          <p>Introduce la contraseña de administrador</p>
+          <form @submit.prevent="login">
+            <input
+              v-model="loginEmail"
+              type="email"
+              placeholder="Email"
+              required
+              autoFocus
+            />
+            <input
+              v-model="loginPassword"
+              type="password"
+              placeholder="Contraseña"
+              required
+            />
+            <button type="submit" class="btn btn-primary">Entrar</button>
+            <p v-if="loginError" class="error">{{ loginError }}</p>
+          </form>
+        </div>
+      </div>
+
+      <template v-else>
       <nav class="sidebar">
         <div class="sidebar-header">
           <h1>LibreChat Admin</h1>
@@ -61,7 +67,8 @@
         </div>
       </main>
     </template>
-  </div>
+  </template>
+</div>
 </template>
 
 <script>
@@ -76,8 +83,9 @@ export default {
         { path: '/mcp-servers', name: '🔌 MCP Servers' },
         { path: '/roles', name: '🔐 Roles' },
       ],
-      requiresAuth: false,
+      requiresAuth: true,
       isAuthenticated: false,
+      isInitializing: true,
       currentUser: {
         name: '',
         email: '',
@@ -88,8 +96,8 @@ export default {
       loginError: '',
     };
   },
-  async mounted() {
-    await this.checkAuthConfig();
+  async created() {
+    // 1. Verificar sesión en localStorage inmediatamente
     const savedSession = localStorage.getItem('admin_session');
     if (savedSession) {
       this.isAuthenticated = true;
@@ -98,6 +106,12 @@ export default {
         this.currentUser = JSON.parse(savedUser);
       }
     }
+
+    // 2. Verificar configuración del servidor
+    await this.checkAuthConfig();
+    
+    // 3. Finalizar inicialización
+    this.isInitializing = false;
   },
   methods: {
     async checkAuthConfig() {
@@ -155,6 +169,30 @@ export default {
   align-items: center;
   justify-content: center;
   z-index: 2000;
+}
+
+.initializing-overlay {
+  position: fixed;
+  inset: 0;
+  background: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #1e293b;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .login-box {
