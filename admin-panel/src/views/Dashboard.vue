@@ -58,35 +58,17 @@ export default {
   methods: {
     async loadStats() {
       try {
-        // Get collections
-        const collectionsRes = await this.$axios.get('/api/collections')
-        this.stats.collections = collectionsRes.data.collections.length
-
-        // Get users count
-        try {
-          const usersRes = await this.$axios.get('/api/users?limit=1')
-          this.stats.users = usersRes.data.total || 0
-        } catch (e) {
-          this.stats.users = 0
-        }
-
-        // Get MCP servers count
-        try {
-          const mcpRes = await this.$axios.get('/api/mcpservers?limit=1')
-          this.stats.mcpServers = mcpRes.data.total || 0
-        } catch (e) {
-          this.stats.mcpServers = 0
-        }
-
-        // Get roles count
-        try {
-          const rolesRes = await this.$axios.get('/api/roles?limit=1')
-          this.stats.roles = rolesRes.data.total || 0
-        } catch (e) {
-          this.stats.roles = 0
+        const response = await this.$axios.get('/api/stats');
+        const data = response.data;
+        
+        if (data.totals) {
+          this.stats.users = data.totals.totalUsers || 0;
+          this.stats.mcpServers = data.totals.totalMCPServers || data.totals.totalAgents || 0;
+          this.stats.roles = data.totals.totalRoles || 0;
+          this.stats.collections = data.totals.totalConversations || 0;
         }
       } catch (error) {
-        console.error('Error loading stats:', error)
+        console.error('Error loading stats:', error);
       }
     }
   }

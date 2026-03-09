@@ -7,11 +7,17 @@
         <p>Introduce la contraseña de administrador</p>
         <form @submit.prevent="login">
           <input
+            v-model="loginEmail"
+            type="email"
+            placeholder="Email"
+            required
+            autoFocus
+          />
+          <input
             v-model="loginPassword"
             type="password"
             placeholder="Contraseña"
             required
-            autoFocus
           />
           <button type="submit" class="btn btn-primary">Entrar</button>
           <p v-if="loginError" class="error">{{ loginError }}</p>
@@ -36,6 +42,13 @@
           </router-link>
         </div>
         <div class="sidebar-footer" v-if="isAuthenticated">
+          <div class="user-profile">
+            <div class="user-info">
+              <span class="user-name">{{ currentUser.name || 'Admin' }}</span>
+              <span class="user-email">{{ currentUser.email }}</span>
+              <span class="user-role-badge">{{ currentUser.role }}</span>
+            </div>
+          </div>
           <button @click="logout" class="btn-logout">Cerrar Sesión</button>
         </div>
       </nav>
@@ -65,6 +78,12 @@ export default {
       ],
       requiresAuth: false,
       isAuthenticated: false,
+      currentUser: {
+        name: '',
+        email: '',
+        role: ''
+      },
+      loginEmail: '',
       loginPassword: '',
       loginError: '',
     };
@@ -74,12 +93,16 @@ export default {
     const savedSession = localStorage.getItem('admin_session');
     if (savedSession) {
       this.isAuthenticated = true;
+      const savedUser = localStorage.getItem('currentUser');
+      if (savedUser) {
+        this.currentUser = JSON.parse(savedUser);
+      }
     }
   },
   methods: {
     async checkAuthConfig() {
       try {
-        const response = await this.$axios.get('/api/config');
+        const response = await this.$axios.get('/api/auth/config');
         this.requiresAuth = response.data.passwordRequired;
       } catch (error) {
         console.error('Error checking auth config:', error);
@@ -87,21 +110,30 @@ export default {
     },
     async login() {
       try {
-        const response = await this.$axios.post('/api/verify-password', {
+        const response = await this.$axios.post('/api/auth/login', {
+          email: this.loginEmail,
           password: this.loginPassword,
         });
         if (response.data.valid) {
           this.isAuthenticated = true;
+          this.currentUser = response.data.user;
           localStorage.setItem('admin_session', 'true');
+          localStorage.setItem('accessToken', response.data.accessToken);
+          localStorage.setItem('refreshToken', response.data.refreshToken);
+          localStorage.setItem('currentUser', JSON.stringify(response.data.user));
           this.loginError = '';
         }
       } catch (error) {
-        this.loginError = 'Contraseña incorrecta';
+        this.loginError = error.response?.data?.message || 'Error al iniciar sesión';
       }
     },
     logout() {
       this.isAuthenticated = false;
+      this.currentUser = { name: '', email: '', role: '' };
       localStorage.removeItem('admin_session');
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('currentUser');
       this.loginPassword = '';
     },
   },
@@ -219,6 +251,46 @@ export default {
 .btn-logout:hover {
   background: #ef4444;
   color: white;
+}
+
+.user-profile {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #0f172a;
+  border-radius: 10px;
+  border: 1px solid #334155;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.user-name {
+  color: #f1f5f9;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.user-email {
+  color: #94a3b8;
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.user-role-badge {
+  margin-top: 6px;
+  display: inline-block;
+  padding: 2px 8px;
+  background: #1e293b;
+  color: #60a5fa;
+  border: 1px solid #3b82f6;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  width: fit-content;
 }
 
 .nav-link {
