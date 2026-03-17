@@ -1,8 +1,4 @@
 services:
-  api:
-    networks:
-      - librechat-internal
-
   admin-panel:
     build:
       context: ./admin-panel

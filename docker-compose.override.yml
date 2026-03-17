@@ -1,13 +1,21 @@
 services:
-
-  # Montar el archivo de configuración de LibreChat
+  # === 1. Ajustes al API principal ===
   api:
+    networks:
+      - default
+      - traefik-public
     volumes:
       - type: bind
         source: ./librechat.yaml
         target: /app/librechat.yaml
 
-  # ADD MONGO-EXPRESS
+  # === 2. Ajustes de Meilisearch (Mantener versión 1.12 para no romper índices existentes) ===
+  meilisearch:
+    image: getmeili/meilisearch:v1.12.3
+    volumes:
+      - ./meili_data_v1.12:/meili_data
+
+  # === 3. Servicios Custom del Proyecto (Admin, Bases de Datos, Backups) ===
   mongo-express:
     image: mongo-express
     container_name: mongo-express
@@ -20,10 +28,7 @@ services:
     depends_on:
       - mongodb
     restart: always
-    networks:
-      - librechat-internal
 
-  # ADD MONGODB REST API - Express wrapper
   mongodb-api:
     image: node:20-alpine
     container_name: mongodb-api
@@ -39,10 +44,7 @@ services:
     depends_on:
       - mongodb
     restart: always
-    networks:
-      - librechat-internal
 
-  # ADD ADMIN PANEL (Vue)
   admin-panel:
     build:
       context: ./admin-panel
@@ -55,10 +57,7 @@ services:
     depends_on:
       - mongodb-api
     restart: always
-    networks:
-      - librechat-internal
 
-  # BACKUP SERVICES
   mongodb-backup:
     container_name: mongodb-backup
     image: tiredofit/mongodb-backup:latest
@@ -73,8 +72,6 @@ services:
       - ./backups/mongodb:/backup
     depends_on:
       - mongodb
-    networks:
-      - librechat-internal
 
   postgres-backup:
     container_name: postgres-backup
@@ -91,5 +88,8 @@ services:
       - ./backups/postgres:/backups
     depends_on:
       - vectordb
-    networks:
-      - librechat-internal
+
+# Redes compartidas
+networks:
+  traefik-public:
+    external: true
