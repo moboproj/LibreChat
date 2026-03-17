@@ -2,7 +2,7 @@ services:
   # === 1. Ajustes al API principal ===
   api:
     networks:
-      - librechat-internal
+      - default
       - traefik-public
     volumes:
       - type: bind
@@ -28,8 +28,6 @@ services:
     depends_on:
       - mongodb
     restart: always
-    networks:
-      - librechat-internal
 
   mongodb-api:
     image: node:20-alpine
@@ -46,8 +44,6 @@ services:
     depends_on:
       - mongodb
     restart: always
-    networks:
-      - librechat-internal
 
   admin-panel:
     build:
@@ -61,8 +57,6 @@ services:
     depends_on:
       - mongodb-api
     restart: always
-    networks:
-      - librechat-internal
 
   mongodb-backup:
     container_name: mongodb-backup
@@ -78,8 +72,6 @@ services:
       - ./backups/mongodb:/backup
     depends_on:
       - mongodb
-    networks:
-      - librechat-internal
 
   postgres-backup:
     container_name: postgres-backup
@@ -96,12 +88,8 @@ services:
       - ./backups/postgres:/backups
     depends_on:
       - vectordb
-    networks:
-      - librechat-internal
 
 # Redes compartidas
 networks:
-  librechat-internal:
-    driver: bridge
   traefik-public:
     external: true
