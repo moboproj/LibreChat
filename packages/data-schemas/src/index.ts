@@ -99,6 +99,7 @@ export {
   MCPServerNameMigrationError,
   createMCPAuthorityLookupIndexes,
   dropSupersededTenantIndexes,
+  dropUniqueUserEmailIndexes,
   dropSupersededPromptGroupIndexes,
   backfillMCPServerNormalizedNames,
 } from './migrations';

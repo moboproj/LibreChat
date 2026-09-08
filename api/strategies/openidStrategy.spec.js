@@ -2,7 +2,7 @@ const undici = require('undici');
 const fetch = require('node-fetch');
 const jwtDecode = require('jsonwebtoken/decode');
 const { ErrorTypes, FileSources } = require('librechat-data-provider');
-const { findUser, createUser, updateUser, findRolesByNames } = require('~/models');
+const { findUser, findUsers, createUser, updateUser, findRolesByNames } = require('~/models');
 const {
   getOpenIdProxyDispatcher,
   resolveAppConfigForUser,
@@ -97,6 +97,7 @@ jest.mock('@librechat/api', () => {
 });
 jest.mock('~/models', () => ({
   findUser: jest.fn(),
+  findUsers: jest.fn(),
   createUser: jest.fn(),
   updateUser: jest.fn(),
   findRolesByNames: jest.fn(),
@@ -248,6 +249,7 @@ describe('setupOpenId', () => {
     delete process.env.OPENID_AVATAR_AUTHORIZED_ORIGINS;
     delete process.env.PROXY;
     delete process.env.OPENID_USE_PKCE;
+    delete process.env.OPENID_EXISTING_USERS_ONLY;
     delete process.env.OPENID_GENERATE_NONCE;
     delete process.env.OPENID_ROLE_SYNC_ENABLED;
     delete process.env.OPENID_ROLE_SYNC_API_ENABLED;
@@ -266,6 +268,10 @@ describe('setupOpenId', () => {
 
     // By default, assume that no user is found, so createUser will be called
     findUser.mockResolvedValue(null);
+    findUsers.mockImplementation(async (query) => {
+      const user = await findUser(query);
+      return user ? [user] : [];
+    });
     createUser.mockImplementation(async (userData) => {
       // simulate created user with an _id property
       return { _id: 'newUserId', ...userData };
@@ -552,6 +558,38 @@ describe('setupOpenId', () => {
     );
   });
 
+  it('should migrate a local provider user to OpenID by email', async () => {
+    const existingUser = {
+      _id: 'existingUserId',
+      provider: 'local',
+      email: tokenset.claims().email,
+      username: 'existinguser',
+      name: 'Existing User',
+    };
+    findUser.mockImplementation(async (query) => {
+      if (query.email === tokenset.claims().email) {
+        return existingUser;
+      }
+      return null;
+    });
+
+    const result = await validate(tokenset);
+
+    expect(result.user).toMatchObject({
+      _id: existingUser._id,
+      provider: 'openid',
+      openidId: tokenset.claims().sub,
+    });
+    expect(createUser).not.toHaveBeenCalled();
+    expect(updateUser).toHaveBeenCalledWith(
+      existingUser._id,
+      expect.objectContaining({
+        provider: 'openid',
+        openidId: tokenset.claims().sub,
+      }),
+    );
+  });
+
   it('should block login when email exists with different provider', async () => {
     // Arrange – simulate that a user exists with same email but different provider
     const existingUser = {
@@ -579,7 +617,7 @@ describe('setupOpenId', () => {
     expect(updateUser).not.toHaveBeenCalled();
   });
 
-  it('should block login when email fallback finds user with mismatched openidId', async () => {
+  it('should create a new user when email fallback finds another openid employee', async () => {
     const existingUser = {
       _id: 'existingUserId',
       provider: 'openid',
@@ -600,10 +638,9 @@ describe('setupOpenId', () => {
 
     const result = await validate(tokenset);
 
-    expect(result.user).toBe(false);
-    expect(result.details.message).toBe(ErrorTypes.AUTH_FAILED);
-    expect(createUser).not.toHaveBeenCalled();
-    expect(updateUser).not.toHaveBeenCalled();
+    expect(result.user).toBeTruthy();
+    expect(createUser).toHaveBeenCalled();
+    expect(result.user.openidId).toBe(tokenset.claims().sub);
   });
 
   it('should enforce the required role and reject login if missing', async () => {
@@ -1616,6 +1653,43 @@ describe('setupOpenId', () => {
 
     // Assert – verify that the user role is set to "ADMIN"
     expect(user.role).toBe('ADMIN');
+  });
+
+  it('demotes an existing ADMIN when the omnichat client role is USER', async () => {
+    process.env.OPENID_ADMIN_ROLE = 'ADMIN';
+    process.env.OPENID_ADMIN_ROLE_PARAMETER_PATH = 'resource_access.omnichat.roles';
+    process.env.OPENID_ADMIN_ROLE_TOKEN_KIND = 'access';
+    process.env.OPENID_ROLE_SYNC_ENABLED = 'true';
+    process.env.OPENID_ROLE_SYNC_SOURCE = 'access';
+    process.env.OPENID_ROLE_SYNC_CLAIM = 'resource_access.omnichat.roles';
+    process.env.OPENID_ROLE_SYNC_ROLE_PRIORITY = 'USER';
+    process.env.OPENID_ROLE_SYNC_FALLBACK_ROLE = 'USER';
+
+    const existingAdminUser = {
+      _id: 'existingAdminId',
+      provider: 'openid',
+      email: tokenset.claims().email,
+      openidId: tokenset.claims().sub,
+      username: 'adminuser',
+      name: 'Admin User',
+      role: 'ADMIN',
+    };
+    findUser.mockImplementation(async (query) => {
+      if (query.openidId === tokenset.claims().sub || query.email === tokenset.claims().email) {
+        return existingAdminUser;
+      }
+      return null;
+    });
+    jwtDecode.mockReturnValue({
+      roles: ['requiredRole'],
+      resource_access: {
+        omnichat: { roles: ['USER'] },
+      },
+    });
+
+    const { user } = await validate(tokenset);
+
+    expect(user.role).toBe('USER');
   });
 
   it('should not set user role if OPENID_ADMIN_ROLE is set but the user does not have that role', async () => {

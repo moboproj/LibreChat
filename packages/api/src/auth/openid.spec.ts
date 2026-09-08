@@ -405,7 +405,7 @@ describe('findOpenIDUser', () => {
       });
     });
 
-    it('should reject email fallback when existing openidId does not match token sub', async () => {
+    it('should treat a different openid employee as not found so a new user can be created', async () => {
       const mockUser: IUser = {
         _id: newId(),
         provider: 'openid',
@@ -425,8 +425,72 @@ describe('findOpenIDUser', () => {
 
       expect(result).toEqual({
         user: null,
-        error: ErrorTypes.AUTH_FAILED,
+        error: null,
         migration: false,
+      });
+    });
+
+    it('should ignore STORE accounts during email fallback', async () => {
+      const storeUser: IUser = {
+        _id: newId(),
+        provider: 'local',
+        role: 'STORE',
+        email: 'store@example.com',
+        username: 'tienda',
+      } as IUser;
+
+      mockFindUser.mockResolvedValueOnce(null).mockResolvedValueOnce(storeUser);
+
+      const result = await findOpenIDUser({
+        openidId: 'openid_123',
+        openidIssuer: issuer,
+        findUser: mockFindUser,
+        email: 'store@example.com',
+      });
+
+      expect(result).toEqual({
+        user: null,
+        error: null,
+        migration: false,
+      });
+    });
+
+    it('should migrate a local person when a STORE account shares the same email', async () => {
+      const storeUser: IUser = {
+        _id: newId(),
+        provider: 'local',
+        role: 'STORE',
+        email: 'store@example.com',
+        username: 'tienda',
+      } as IUser;
+      const localPerson: IUser = {
+        _id: newId(),
+        provider: 'local',
+        role: 'USER',
+        email: 'store@example.com',
+        username: 'manu',
+      } as IUser;
+      const mockFindUsers = jest.fn().mockResolvedValue([storeUser, localPerson]);
+
+      mockFindUser.mockResolvedValueOnce(null);
+
+      const result = await findOpenIDUser({
+        openidId: 'openid_123',
+        openidIssuer: issuer,
+        findUser: mockFindUser,
+        findUsers: mockFindUsers,
+        email: 'store@example.com',
+      });
+
+      expect(result).toEqual({
+        user: {
+          ...localPerson,
+          provider: 'openid',
+          openidId: 'openid_123',
+          openidIssuer: issuer,
+        },
+        error: null,
+        migration: true,
       });
     });
 
@@ -510,6 +574,36 @@ describe('findOpenIDUser', () => {
   });
 
   describe('User migration scenarios', () => {
+    it('should migrate a local provider user to OpenID by email', async () => {
+      const mockUser: IUser = {
+        _id: newId(),
+        provider: 'local',
+        email: 'user@example.com',
+        username: 'testuser',
+      } as IUser;
+
+      mockFindUser.mockResolvedValueOnce(null).mockResolvedValueOnce(mockUser);
+
+      const result = await findOpenIDUser({
+        openidId: 'openid_123',
+        openidIssuer: issuer,
+        findUser: mockFindUser,
+        email: 'user@example.com',
+      });
+
+      expect(result).toEqual({
+        user: {
+          ...mockUser,
+          provider: 'openid',
+          openidId: 'openid_123',
+          openidIssuer: issuer,
+        },
+        error: null,
+        migration: true,
+      });
+      expect(recordOpenIDUserLookup).toHaveBeenCalledWith('migration', expect.any(Number));
+    });
+
     it('should prepare user for migration when email exists without openidId', async () => {
       const mockUser: IUser = {
         _id: newId(),
@@ -569,7 +663,7 @@ describe('findOpenIDUser', () => {
       });
     });
 
-    it('should reject when user already has a different openidId', async () => {
+    it('should treat another openid employee as not found when email already has a different openidId', async () => {
       const mockUser: IUser = {
         _id: newId(),
         provider: 'openid',
@@ -589,12 +683,12 @@ describe('findOpenIDUser', () => {
 
       expect(result).toEqual({
         user: null,
-        error: ErrorTypes.AUTH_FAILED,
+        error: null,
         migration: false,
       });
     });
 
-    it('should reject when user has no provider but a different openidId', async () => {
+    it('should treat a user without provider but a different openidId as not found', async () => {
       const mockUser: IUser = {
         _id: newId(),
         openidId: 'existing_openid',
@@ -614,7 +708,7 @@ describe('findOpenIDUser', () => {
 
       expect(result).toEqual({
         user: null,
-        error: ErrorTypes.AUTH_FAILED,
+        error: null,
         migration: false,
       });
     });
@@ -744,7 +838,7 @@ describe('findOpenIDUser', () => {
       expect(recordOpenIDUserLookup).toHaveBeenCalledWith('error', expect.any(Number));
     });
 
-    it('should reject email fallback when openidId is empty and user has a stored openidId', async () => {
+    it('should treat email fallback as not found when openidId is empty and user has a stored openidId', async () => {
       const mockUser: IUser = {
         _id: newId(),
         provider: 'openid',
@@ -765,7 +859,7 @@ describe('findOpenIDUser', () => {
       expect(mockFindUser).toHaveBeenCalledWith({ email: 'user@example.com' });
       expect(result).toEqual({
         user: null,
-        error: ErrorTypes.AUTH_FAILED,
+        error: null,
         migration: false,
       });
     });

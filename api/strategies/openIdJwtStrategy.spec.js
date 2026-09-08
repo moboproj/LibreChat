@@ -860,7 +860,7 @@ describe('openIdJwtStrategy – OPENID_EMAIL_CLAIM', () => {
     expect(user).toBe(false);
   });
 
-  it('should reject login when email fallback finds user with mismatched openidId', async () => {
+  it('should not bind JWT login to another openid employee with the same email', async () => {
     const emailMatchWithDifferentSub = {
       _id: 'user-id-2',
       provider: 'openid',
@@ -883,7 +883,7 @@ describe('openIdJwtStrategy – OPENID_EMAIL_CLAIM', () => {
     const { user, info } = await invokeVerify(req, payload);
 
     expect(user).toBe(false);
-    expect(info).toEqual({ message: 'auth_failed' });
+    expect(info).toBeUndefined();
   });
 
   it('should trim whitespace from OPENID_EMAIL_CLAIM', async () => {

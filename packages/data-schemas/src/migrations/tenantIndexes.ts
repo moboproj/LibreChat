@@ -102,5 +102,37 @@ export async function dropSupersededTenantIndexes(
   return result;
 }
 
+export async function dropUniqueUserEmailIndexes(connection: Connection): Promise<string[]> {
+  const collection = connection.db?.collection('users');
+  if (!collection) {
+    return [];
+  }
+
+  let existingIndexes: Array<{ name?: string; key?: Record<string, number>; unique?: boolean }>;
+  try {
+    existingIndexes = await collection.indexes();
+  } catch {
+    return [];
+  }
+
+  const dropped: string[] = [];
+  for (const index of existingIndexes) {
+    const keys = Object.keys(index.key ?? {});
+    const isEmailIndex =
+      index.unique === true &&
+      index.key?.email === 1 &&
+      (keys.length === 1 || (keys.length === 2 && index.key?.tenantId === 1));
+    if (!isEmailIndex || !index.name) {
+      continue;
+    }
+
+    await collection.dropIndex(index.name);
+    dropped.push(index.name);
+    logger.info(`[UserEmailIndex] Dropped unique email index: ${index.name}`);
+  }
+
+  return dropped;
+}
+
 /** Exported for testing — the raw index map */
 export { SUPERSEDED_INDEXES };

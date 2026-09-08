@@ -190,7 +190,7 @@ const userSchema: Schema<IUser> = new Schema<IUser>(
   { timestamps: true },
 );
 
-userSchema.index({ email: 1, tenantId: 1 }, { unique: true });
+userSchema.index({ email: 1, tenantId: 1 });
 userSchema.index({ role: 1, tenantId: 1 });
 userSchema.index({ idOnTheSource: 1, openidIssuer: 1, tenantId: 1 });
 

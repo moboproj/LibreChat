@@ -19,7 +19,7 @@ const {
   isAccessTokenJwt,
   math,
 } = require('@librechat/api');
-const { updateUser, findUser, isAgentTriggerPrincipalActive } = require('~/models');
+const { updateUser, findUser, findUsers, isAgentTriggerPrincipalActive } = require('~/models');
 const getLogStores = require('~/cache/getLogStores');
 
 function decodeJwtExpiry(token) {
@@ -181,6 +181,7 @@ const openIdJwtLogin = (openIdConfig) => {
           ? { user: cachedUser, error: null, migration: false }
           : await findOpenIDUser({
               findUser,
+              findUsers,
               email: payload ? getOpenIdEmail(payload) : undefined,
               openidId: payload?.sub,
               openidIssuer,

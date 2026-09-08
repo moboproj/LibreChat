@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { createMethods } = require('@librechat/data-schemas');
+const { createMethods, dropUniqueUserEmailIndexes } = require('@librechat/data-schemas');
 const { matchModelName, findMatchingPattern, isDeploymentSkillId } = require('@librechat/api');
 const getLogStores = require('~/cache/getLogStores');
 
@@ -11,6 +11,7 @@ const methods = createMethods(mongoose, {
 });
 
 const seedDatabase = async () => {
+  await dropUniqueUserEmailIndexes(mongoose.connection);
   await methods.initializeRoles();
   await methods.seedDefaultRoles();
   await methods.ensureDefaultCategories();

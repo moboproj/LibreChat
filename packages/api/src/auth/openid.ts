@@ -63,6 +63,51 @@ function isLegacyOpenIdIssuer(openidIssuer: string | undefined): boolean {
   return openidIssuer != null && loginIssuer != null && openidIssuer === loginIssuer;
 }
 
+function canUseOpenIdEmailFallback(provider: string | undefined): boolean {
+  return provider == null || provider === '' || provider === 'openid' || provider === 'local';
+}
+
+export function isStoreRole(role: string | undefined): boolean {
+  return role?.trim().toUpperCase() === 'STORE';
+}
+
+async function findEmailCandidates(
+  findUser: UserMethods['findUser'],
+  findUsers: UserMethods['findUsers'] | undefined,
+  email: string,
+): Promise<IUser[]> {
+  if (findUsers) {
+    const users = await findUsers({ email });
+    return Array.isArray(users) ? users : [];
+  }
+
+  const user = await findUser({ email });
+  return user ? [user] : [];
+}
+
+function selectEmailFallbackUser(
+  candidates: IUser[],
+  openidId: string,
+): { user: IUser | null; error: string | null } {
+  const people = candidates.filter((candidate) => !isStoreRole(candidate.role));
+  const blocked = people.find((candidate) => !canUseOpenIdEmailFallback(candidate.provider));
+  if (blocked) {
+    return { user: null, error: ErrorTypes.AUTH_FAILED };
+  }
+
+  const sameSub = people.find((candidate) => candidate.openidId === openidId);
+  if (sameSub) {
+    return { user: sameSub, error: null };
+  }
+
+  const migratable = people.find((candidate) => !candidate.openidId);
+  if (migratable) {
+    return { user: migratable, error: null };
+  }
+
+  return { user: null, error: null };
+}
+
 function hasOpenIdLookupValue(value: string | undefined): value is string {
   return typeof value === 'string' && value.length > 0;
 }
@@ -209,6 +254,7 @@ export function getOpenIdEmail(
 export async function findOpenIDUser({
   openidId,
   findUser,
+  findUsers,
   email,
   openidIssuer,
   idOnTheSource,
@@ -216,6 +262,7 @@ export async function findOpenIDUser({
 }: {
   openidId: string;
   findUser: UserMethods['findUser'];
+  findUsers?: UserMethods['findUsers'];
   email?: string;
   openidIssuer?: string;
   idOnTheSource?: string;
@@ -250,24 +297,22 @@ export async function findOpenIDUser({
     if (primaryIssuerResolution) return finish(primaryIssuerResolution);
 
     if (!user && email) {
-      user = await findUser({ email });
+      const candidates = await findEmailCandidates(findUser, findUsers, email);
+      const selected = selectEmailFallbackUser(candidates, openidId);
+      user = selected.user;
       logger.warn(
         `[${strategyName}] user ${user ? 'found' : 'not found'} with email: ${email} for openidId: ${openidId}`,
       );
 
-      // If user found by email, check if they're allowed to use OpenID provider
-      if (user && user.provider && user.provider !== 'openid') {
+      if (selected.error) {
         logger.warn(
-          `[${strategyName}] Attempted OpenID login by user ${user.email}, was registered with "${user.provider}" provider`,
+          `[${strategyName}] Attempted OpenID login by user ${email}, was registered with a non-OpenID provider`,
         );
-        return finish({ user: null, error: ErrorTypes.AUTH_FAILED, migration: false });
+        return finish({ user: null, error: selected.error, migration: false });
       }
 
-      if (user?.openidId && user.openidId !== openidId) {
-        logger.warn(
-          `[${strategyName}] Rejected email fallback for ${user.email}: stored openidId does not match token sub`,
-        );
-        return finish({ user: null, error: ErrorTypes.AUTH_FAILED, migration: false });
+      if (!user) {
+        return finish({ user: null, error: null, migration: false });
       }
 
       const emailIssuerResolution = resolveIssuerBoundUser(
@@ -278,7 +323,7 @@ export async function findOpenIDUser({
       );
       if (emailIssuerResolution) return finish(emailIssuerResolution);
 
-      if (user && !user.openidId) {
+      if (!user.openidId) {
         logger.info(
           `[${strategyName}] Preparing user ${user.email} for migration to OpenID with sub: ${openidId}`,
         );

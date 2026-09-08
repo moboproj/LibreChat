@@ -104,6 +104,26 @@ describe('User schema indexes', () => {
       }),
     ).rejects.toThrow(/duplicate key/);
   });
+
+  test('should allow the same email on different users', async () => {
+    await User.syncIndexes();
+
+    await User.create({
+      email: 'store@example.com',
+      provider: 'local',
+      role: 'STORE',
+      username: 'tienda',
+    });
+
+    await expect(
+      User.create({
+        email: 'store@example.com',
+        provider: 'openid',
+        openidId: 'employee-sub',
+        username: '20239',
+      }),
+    ).resolves.toBeTruthy();
+  });
 });
 
 describe('User personalization', () => {

@@ -1,6 +1,10 @@
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { dropSupersededTenantIndexes, SUPERSEDED_INDEXES } from './tenantIndexes';
+import {
+  dropSupersededTenantIndexes,
+  dropUniqueUserEmailIndexes,
+  SUPERSEDED_INDEXES,
+} from './tenantIndexes';
 
 jest.mock('~/config/winston', () => ({
   error: jest.fn(),
@@ -212,22 +216,26 @@ describe('dropSupersededTenantIndexes', () => {
       expect(countB).toBe(1);
     });
 
-    it('still rejects duplicate email within same tenant', async () => {
+    it('allows duplicate email within same tenant after unique email index is dropped', async () => {
       const users = mongoose.connection.db!.collection('users');
+      await dropUniqueUserEmailIndexes(mongoose.connection);
 
       await users.insertOne({
         email: 'unique-within@example.com',
         tenantId: 'tenant-dup',
         name: 'First',
       });
+      await users.insertOne({
+        email: 'unique-within@example.com',
+        tenantId: 'tenant-dup',
+        name: 'Second',
+      });
 
-      await expect(
-        users.insertOne({
-          email: 'unique-within@example.com',
-          tenantId: 'tenant-dup',
-          name: 'Second',
-        }),
-      ).rejects.toThrow(/E11000|duplicate key/);
+      const count = await users.countDocuments({
+        email: 'unique-within@example.com',
+        tenantId: 'tenant-dup',
+      });
+      expect(count).toBe(2);
     });
   });
 
@@ -283,6 +291,47 @@ describe('dropSupersededTenantIndexes', () => {
 
       const skippedCollections = result.skipped.filter((s) => s.includes('does not exist'));
       expect(skippedCollections.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('dropUniqueUserEmailIndexes', () => {
+    let emailServer: InstanceType<typeof MongoMemoryServer>;
+    let emailConnection: mongoose.Connection;
+
+    beforeAll(async () => {
+      emailServer = await MongoMemoryServer.create();
+      emailConnection = mongoose.createConnection(emailServer.getUri());
+      await emailConnection.asPromise();
+
+      const users = emailConnection.db!.collection('users');
+      await users.createIndex({ email: 1 }, { unique: true, name: 'email_1' });
+      await users.createIndex(
+        { email: 1, tenantId: 1 },
+        { unique: true, name: 'email_1_tenantId_1' },
+      );
+      await users.createIndex(
+        { openidId: 1, openidIssuer: 1, tenantId: 1 },
+        { unique: true, name: 'openidId_1_openidIssuer_1_tenantId_1' },
+      );
+    });
+
+    afterAll(async () => {
+      await emailConnection.close();
+      await emailServer.stop();
+    });
+
+    it('drops unique email indexes and leaves other unique indexes', async () => {
+      const dropped = await dropUniqueUserEmailIndexes(emailConnection);
+      expect(dropped).toEqual(expect.arrayContaining(['email_1', 'email_1_tenantId_1']));
+
+      const indexes = await emailConnection.db!.collection('users').indexes();
+      const indexNames = indexes.map((idx) => idx.name);
+      expect(indexNames).not.toContain('email_1');
+      expect(indexNames).not.toContain('email_1_tenantId_1');
+      expect(indexNames).toContain('openidId_1_openidIssuer_1_tenantId_1');
+
+      const secondRun = await dropUniqueUserEmailIndexes(emailConnection);
+      expect(secondRun).toEqual([]);
     });
   });
 

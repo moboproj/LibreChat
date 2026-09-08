@@ -28,7 +28,7 @@ const {
 } = require('@librechat/api');
 const { getStrategyFunctions } = require('~/server/services/Files/strategies');
 const { resizeAvatar } = require('~/server/services/Files/images/avatar');
-const { findUser, createUser, updateUser, findRolesByNames } = require('~/models');
+const { findUser, createUser, updateUser, findRolesByNames, findUsers } = require('~/models');
 const { getAppConfig } = require('~/server/services/Config');
 const getLogStores = require('~/cache/getLogStores');
 
@@ -582,6 +582,7 @@ async function processOpenIDAuth(tokenset, existingUsersOnly = false) {
 
   const result = await findOpenIDUser({
     findUser,
+    findUsers,
     email: email,
     openidId: claims.sub || userinfo.sub,
     openidIssuer,
