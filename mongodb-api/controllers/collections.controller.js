@@ -8,7 +8,8 @@ const getCollection = async (req, res, collectionName) => {
   try {
     const db = getDB();
     const limit = parseInt(req.query.limit) || 50;
-    const documents = await db.collection(collectionName)
+    const documents = await db
+      .collection(collectionName)
       .find({})
       .limit(limit)
       .sort({ createdAt: -1 }) // Assuming most collections have this
@@ -25,7 +26,7 @@ const createDocument = async (req, res, collectionName) => {
     const data = {
       ...req.body,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
     const result = await db.collection(collectionName).insertOne(data);
     res.status(201).json({ _id: result.insertedId });
@@ -38,7 +39,7 @@ const updateDocument = async (req, res, collectionName) => {
   try {
     const db = getDB();
     const { id } = req.params;
-    
+
     if (!ObjectId.isValid(id)) {
       return res.status(400).json({ error: 'Invalid ID format' });
     }
@@ -48,10 +49,9 @@ const updateDocument = async (req, res, collectionName) => {
     delete updateData._id;
     updateData.updatedAt = new Date();
 
-    const result = await db.collection(collectionName).updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updateData }
-    );
+    const result = await db
+      .collection(collectionName)
+      .updateOne({ _id: new ObjectId(id) }, { $set: updateData });
 
     if (result.matchedCount === 0) {
       return res.status(404).json({ error: 'Document not found' });
@@ -73,7 +73,7 @@ const deleteDocument = async (req, res, collectionName) => {
     }
 
     const result = await db.collection(collectionName).deleteOne({ _id: new ObjectId(id) });
-    
+
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: 'Document not found' });
     }
@@ -92,9 +92,94 @@ const deleteMCPServer = (req, res) => deleteDocument(req, res, 'mcpservers');
 
 // Explicit controllers for roles
 const getRoles = (req, res) => getCollection(req, res, 'roles');
-const createRole = (req, res) => createDocument(req, res, 'roles');
-const updateRole = (req, res) => updateDocument(req, res, 'roles');
-const deleteRole = (req, res) => deleteDocument(req, res, 'roles');
+const createRole = async (req, res) => {
+  try {
+    const db = getDB();
+    const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+    if (!name) {
+      return res.status(400).json({ error: 'El nombre del rol es obligatorio' });
+    }
+    if (name.toUpperCase() === 'STORE' && name !== 'STORE') {
+      return res.status(400).json({ error: 'El rol de tienda debe llamarse exactamente STORE' });
+    }
+
+    const existing = await db.collection('roles').findOne({ name });
+    if (existing) {
+      return res.status(409).json({ error: `El rol ${name} ya existe` });
+    }
+
+    let permissions = req.body.permissions;
+    if (name === 'STORE') {
+      const userRole = await db.collection('roles').findOne({ name: 'USER' });
+      if (!userRole || !userRole.permissions) {
+        return res.status(400).json({ error: 'No hay rol USER en la base para clonar permisos' });
+      }
+      permissions = userRole.permissions;
+    }
+
+    const result = await db.collection('roles').insertOne({
+      name,
+      permissions: permissions || {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    return res.status(201).json({ _id: result.insertedId, name });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+const updateRole = async (req, res) => {
+  try {
+    const db = getDB();
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid ID format' });
+    }
+    const current = await db.collection('roles').findOne({ _id: new ObjectId(id) });
+    if (!current) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    const result = await db.collection('roles').updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          permissions: req.body.permissions ?? current.permissions,
+          updatedAt: new Date(),
+        },
+      },
+    );
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    return res.json({ message: 'Document updated' });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+const deleteRole = async (req, res) => {
+  try {
+    const db = getDB();
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid ID format' });
+    }
+    const current = await db.collection('roles').findOne({ _id: new ObjectId(id) });
+    if (!current) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    if (current.name === 'ADMIN' || current.name === 'USER' || current.name === 'STORE') {
+      return res.status(403).json({ error: `No se puede eliminar el rol ${current.name}` });
+    }
+    const result = await db.collection('roles').deleteOne({ _id: new ObjectId(id) });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    return res.json({ message: 'Document deleted' });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
 
 // Stats endpoint: providing detailed stats for Dashboard and Statistics views
 const getCollectionsStats = async (req, res) => {
@@ -112,96 +197,121 @@ const getCollectionsStats = async (req, res) => {
       totalAgents,
       totalFiles,
       totalMCPServers,
-      totalRoles
+      totalRoles,
     ] = await Promise.all([
       db.collection('messages').countDocuments(),
       db.collection('users').countDocuments(),
       db.collection('conversations').countDocuments(),
-      db.collection('agents').countDocuments().catch(() => 0),
-      db.collection('files').countDocuments().catch(() => 0),
-      db.collection('mcpservers').countDocuments().catch(() => 0),
-      db.collection('roles').countDocuments().catch(() => 0),
+      db
+        .collection('agents')
+        .countDocuments()
+        .catch(() => 0),
+      db
+        .collection('files')
+        .countDocuments()
+        .catch(() => 0),
+      db
+        .collection('mcpservers')
+        .countDocuments()
+        .catch(() => 0),
+      db
+        .collection('roles')
+        .countDocuments()
+        .catch(() => 0),
     ]);
 
     // 2. Trend data
     const messagesLast7Days = await db.collection('messages').countDocuments({
-      createdAt: { $gte: last7Days }
+      createdAt: { $gte: last7Days },
     });
-    
+
     const newUsersLast30Days = await db.collection('users').countDocuments({
-      createdAt: { $gte: last30Days }
+      createdAt: { $gte: last30Days },
     });
 
     // 3. Messages by Day (last 30 days)
-    const messagesByDay = await db.collection('messages').aggregate([
-      { $match: { createdAt: { $gte: last30Days } } },
-      {
-        $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { _id: 1 } }
-    ]).toArray();
+    const messagesByDay = await db
+      .collection('messages')
+      .aggregate([
+        { $match: { createdAt: { $gte: last30Days } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ])
+      .toArray();
 
     // 4. Active Users by Day (last 30 days)
-    const activeUsersByDay = await db.collection('messages').aggregate([
-      { $match: { createdAt: { $gte: last30Days } } },
-      {
-        $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-          users: { $addToSet: "$user" }
-        }
-      },
-      {
-        $project: {
-          _id: 1,
-          activeUsers: { $size: "$users" }
-        }
-      },
-      { $sort: { _id: 1 } }
-    ]).toArray();
+    const activeUsersByDay = await db
+      .collection('messages')
+      .aggregate([
+        { $match: { createdAt: { $gte: last30Days } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            users: { $addToSet: '$user' },
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            activeUsers: { $size: '$users' },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ])
+      .toArray();
 
     // 5. Messages by Model
-    const messagesByModel = await db.collection('messages').aggregate([
-      { $group: { _id: "$model", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 10 }
-    ]).toArray();
+    const messagesByModel = await db
+      .collection('messages')
+      .aggregate([
+        { $group: { _id: '$model', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 },
+      ])
+      .toArray();
 
     // 6. Messages by Endpoint
-    const messagesByEndpoint = await db.collection('messages').aggregate([
-      { $group: { _id: "$endpoint", count: { $sum: 1 } } },
-      { $sort: { count: -1 } }
-    ]).toArray();
+    const messagesByEndpoint = await db
+      .collection('messages')
+      .aggregate([{ $group: { _id: '$endpoint', count: { $sum: 1 } } }, { $sort: { count: -1 } }])
+      .toArray();
 
     // 7. Tokens by Type (from transactions collection)
-    const tokensByType = await db.collection('transactions').aggregate([
-      { $group: { _id: "$tokenType", total: { $sum: { $abs: "$rawAmount" } } } }
-    ]).toArray();
+    const tokensByType = await db
+      .collection('transactions')
+      .aggregate([{ $group: { _id: '$tokenType', total: { $sum: { $abs: '$rawAmount' } } } }])
+      .toArray();
 
     // 8. Top Users by Tokens
-    const topUsersByTokens = await db.collection('transactions').aggregate([
-      { $group: { _id: "$user", totalTokens: { $sum: { $abs: "$rawAmount" } } } },
-      { $sort: { totalTokens: -1 } },
-      { $limit: 10 },
-      {
-        $lookup: {
-          from: 'users',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'userInfo'
-        }
-      },
-      {
-        $project: {
-          _id: 1,
-          totalTokens: 1,
-          name: { $arrayElemAt: ["$userInfo.name", 0] },
-          email: { $arrayElemAt: ["$userInfo.email", 0] }
-        }
-      }
-    ]).toArray();
+    const topUsersByTokens = await db
+      .collection('transactions')
+      .aggregate([
+        { $group: { _id: '$user', totalTokens: { $sum: { $abs: '$rawAmount' } } } },
+        { $sort: { totalTokens: -1 } },
+        { $limit: 10 },
+        {
+          $lookup: {
+            from: 'users',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'userInfo',
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            totalTokens: 1,
+            name: { $arrayElemAt: ['$userInfo.name', 0] },
+            email: { $arrayElemAt: ['$userInfo.email', 0] },
+          },
+        },
+      ])
+      .toArray();
 
     res.json({
       totals: {
@@ -211,7 +321,7 @@ const getCollectionsStats = async (req, res) => {
         totalAgents,
         totalFiles,
         totalMCPServers,
-        totalRoles
+        totalRoles,
       },
       messagesLast7Days,
       newUsersLast30Days,
@@ -220,7 +330,7 @@ const getCollectionsStats = async (req, res) => {
       messagesByModel,
       messagesByEndpoint,
       tokensByType,
-      topUsersByTokens
+      topUsersByTokens,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -236,5 +346,5 @@ module.exports = {
   createRole,
   updateRole,
   deleteRole,
-  getCollectionsStats
+  getCollectionsStats,
 };

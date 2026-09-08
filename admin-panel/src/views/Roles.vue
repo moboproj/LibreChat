@@ -1,7 +1,14 @@
 <template>
   <div class="roles-container">
     <div class="header-actions">
-      <button class="btn btn-primary" @click="showCreateForm = true">➕ Nuevo Rol</button>
+      <button class="btn btn-primary" @click="openCreateForm">➕ Nuevo Rol</button>
+      <button
+        class="btn btn-secondary"
+        :disabled="hasStoreRole || creatingStore"
+        @click="createStoreRole"
+      >
+        {{ hasStoreRole ? 'STORE ya existe' : 'Crear STORE (copia USER)' }}
+      </button>
     </div>
 
     <div v-if="loading" class="loading">Cargando roles...</div>
@@ -12,7 +19,12 @@
           <h4>{{ role.name }}</h4>
           <div class="card-actions">
             <button class="btn-icon" @click="editRole(role)" title="Editar">✏️</button>
-            <button class="btn-icon danger" @click="deleteRole(role._id)" title="Eliminar">
+            <button
+              v-if="!isProtectedRole(role.name)"
+              class="btn-icon danger"
+              @click="deleteRole(role._id)"
+              title="Eliminar"
+            >
               🗑️
             </button>
           </div>
@@ -47,7 +59,12 @@
         <form @submit.prevent="saveRole">
           <div class="form-group">
             <label>Nombre del Rol</label>
-            <input v-model="formData.name" type="text" required />
+            <input
+              v-model="formData.name"
+              type="text"
+              required
+              :disabled="Boolean(editingRole)"
+            />
           </div>
           
           <div class="permissions-editor">
@@ -89,6 +106,7 @@ export default {
     return {
       roles: [],
       loading: false,
+      creatingStore: false,
       showCreateForm: false,
       editingRole: null,
       permissionMap: {
@@ -116,7 +134,35 @@ export default {
   mounted() {
     this.loadRoles();
   },
+  computed: {
+    hasStoreRole() {
+      return this.roles.some((role) => role.name === 'STORE');
+    },
+  },
   methods: {
+    isProtectedRole(name) {
+      return name === 'ADMIN' || name === 'USER' || name === 'STORE';
+    },
+    openCreateForm() {
+      this.editingRole = null;
+      this.formData = {
+        name: '',
+        permissions: this.getDefaultPermissions(),
+      };
+      this.showCreateForm = true;
+    },
+    async createStoreRole() {
+      this.creatingStore = true;
+      try {
+        await this.$axios.post('/api/roles', { name: 'STORE' });
+        await this.loadRoles();
+      } catch (error) {
+        const message = error.response?.data?.error || error.message;
+        alert('No se pudo crear STORE: ' + message);
+      } finally {
+        this.creatingStore = false;
+      }
+    },
     getDefaultPermissions() {
       const perms = {};
       const structure = {
@@ -170,21 +216,19 @@ export default {
     async saveRole() {
       try {
         const payload = {
-          name: this.formData.name,
+          name: this.formData.name.trim(),
           permissions: this.formData.permissions,
         };
-
         if (this.editingRole) {
           await this.$axios.put(`/api/roles/${this.editingRole._id}`, payload);
-          alert('Rol actualizado');
         } else {
           await this.$axios.post('/api/roles', payload);
-          alert('Rol creado');
         }
         this.closeForm();
         this.loadRoles();
       } catch (error) {
-        alert('Error guardando rol: ' + error.message);
+        const message = error.response?.data?.error || error.message;
+        alert('Error guardando rol: ' + message);
       }
     },
     closeForm() {

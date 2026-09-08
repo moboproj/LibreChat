@@ -131,6 +131,7 @@
             <label>Rol</label>
             <select v-model="formData.role">
               <option value="USER">USER</option>
+              <option value="STORE">STORE</option>
               <option value="ADMIN">ADMIN</option>
             </select>
           </div>
@@ -449,6 +450,11 @@ tbody tr:hover {
 .role-badge.user {
   background: #a7f3d0;
   color: #065f46;
+}
+
+.role-badge.store {
+  background: #fde68a;
+  color: #78350f;
 }
 
 .actions {
