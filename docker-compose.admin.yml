@@ -1,0 +1,48 @@
+# Independent OmniChat admin stack (Vue panel + mongodb-api).
+# Not an upstream LibreChat file — keep docker-compose.yml / deploy-compose.yml /
+# client/nginx.conf untouched to avoid merge conflicts on fork updates.
+#
+# Local (same project network as LibreChat so hostname `mongodb` resolves):
+#   copy .env.admin.example -> .env.admin
+#   docker compose -f docker-compose.yml -f docker-compose.admin.yml --env-file .env.admin up -d --build mongodb-api omni-admin-panel
+#   (--env-file replaces .env for interpolation; only start these two services)
+#
+# Dokploy: this file as composePath, own Environment (same keys). Set
+#   MONGODB_URI=mongodb://chat-mongodb:27017/LibreChat
+# Interpolation uses Dokploy Environment, not .env.admin.
+# Local first time: docker network create dokploy-network
+
+services:
+  mongodb-api:
+    container_name: mongodb-api
+    build:
+      context: ./mongodb-api
+    restart: always
+    environment:
+      MONGODB_URI: ${MONGODB_URI}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      SERVICE_TOKEN: ${SERVICE_TOKEN:-}
+      PORT: '8082'
+    ports:
+      - '${MONGODB_API_PORT:-8082}:8082'
+    networks:
+      - default
+      - dokploy-network
+
+  omni-admin-panel:
+    container_name: omni-admin-panel
+    build:
+      context: ./admin-panel
+    restart: always
+    depends_on:
+      - mongodb-api
+    ports:
+      - '${ADMIN_PANEL_PORT:-5173}:5173'
+    networks:
+      - default
+      - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true
