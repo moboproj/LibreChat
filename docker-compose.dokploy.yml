@@ -1,0 +1,295 @@
+services:
+  api:
+    container_name: LibreChat
+    ports:
+      - ${PORT}:${PORT}
+    depends_on:
+      - mongodb
+      - rag_api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: omnichat-feature-sso:dev
+    configs:
+      - source: librechat_yaml
+        target: /app/librechat.yaml
+    restart: always
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    environment:
+      - HOST=0.0.0.0
+      - MONGO_URI=mongodb://mongodb:27017/LibreChat
+      - MEILI_HOST=http://meilisearch:7700
+      - RAG_PORT=${RAG_PORT:-8000}
+      - RAG_API_URL=http://rag_api:${RAG_PORT:-8000}
+      - LOCAL_LLM_APIKEY=${LOCAL_LLM_APIKEY}
+      - LIBRECHAT_CODE_BASEURL=${LIBRECHAT_CODE_BASEURL}
+      - LIBRECHAT_CODE_API_KEY=${LIBRECHAT_CODE_API_KEY}
+      - SANDPACK_BUNDLER_URL=http://192.168.10.215:8090
+      - ADMIN_PANEL_URL=${ADMIN_PANEL_URL}
+      - DOMAIN_CLIENT=${DOMAIN_CLIENT}
+      - DOMAIN_SERVER=${DOMAIN_SERVER}
+      - ALLOW_SOCIAL_LOGIN=${ALLOW_SOCIAL_LOGIN}
+      - OPENID_CLIENT_ID=${OPENID_CLIENT_ID}
+      - OPENID_CLIENT_SECRET=${OPENID_CLIENT_SECRET}
+      - OPENID_ISSUER=${OPENID_ISSUER}
+      - OPENID_SESSION_SECRET=${OPENID_SESSION_SECRET}
+      - OPENID_SCOPE=${OPENID_SCOPE}
+      - OPENID_CALLBACK_URL=${OPENID_CALLBACK_URL}
+      - OPENID_REQUIRED_ROLE=${OPENID_REQUIRED_ROLE}
+      - OPENID_REQUIRED_ROLE_TOKEN_KIND=${OPENID_REQUIRED_ROLE_TOKEN_KIND}
+      - OPENID_REQUIRED_ROLE_PARAMETER_PATH=${OPENID_REQUIRED_ROLE_PARAMETER_PATH}
+      - OPENID_ADMIN_ROLE=${OPENID_ADMIN_ROLE}
+      - OPENID_ADMIN_ROLE_PARAMETER_PATH=${OPENID_ADMIN_ROLE_PARAMETER_PATH}
+      - OPENID_ADMIN_ROLE_TOKEN_KIND=${OPENID_ADMIN_ROLE_TOKEN_KIND}
+      - OPENID_ROLE_SYNC_ENABLED=${OPENID_ROLE_SYNC_ENABLED}
+      - OPENID_ROLE_SYNC_API_ENABLED=${OPENID_ROLE_SYNC_API_ENABLED}
+      - OPENID_ROLE_SYNC_SOURCE=${OPENID_ROLE_SYNC_SOURCE}
+      - OPENID_ROLE_SYNC_CLAIM=${OPENID_ROLE_SYNC_CLAIM}
+      - OPENID_ROLE_SYNC_ROLE_PRIORITY=${OPENID_ROLE_SYNC_ROLE_PRIORITY}
+      - OPENID_ROLE_SYNC_FALLBACK_ROLE=${OPENID_ROLE_SYNC_FALLBACK_ROLE}
+      - OPENID_USERNAME_CLAIM=${OPENID_USERNAME_CLAIM}
+      - OPENID_BUTTON_LABEL=${OPENID_BUTTON_LABEL}
+      - OPENID_AUTO_REDIRECT=${OPENID_AUTO_REDIRECT}
+      - OPENID_USE_PKCE=${OPENID_USE_PKCE}
+      - OPENID_USE_END_SESSION_ENDPOINT=${OPENID_USE_END_SESSION_ENDPOINT}
+      - OPENID_POST_LOGOUT_REDIRECT_URI=${OPENID_POST_LOGOUT_REDIRECT_URI}
+      - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE}
+    volumes:
+      - librechat-images:/app/client/public/images
+      - librechat-uploads:/app/uploads
+      - librechat-logs:/app/logs
+      - ./.env:/app/.env
+    networks:
+      - default
+      - dokploy-network
+  mongodb:
+    container_name: chat-mongodb
+    image: mongo:8.0.17
+    restart: always
+    volumes:
+      - mongo-data:/data/db
+    command: mongod --noauth
+    networks:
+      - default
+      - dokploy-network
+  meilisearch:
+    container_name: chat-meilisearch
+    image: getmeili/meilisearch:v1.12.3
+    restart: always
+    environment:
+      - MEILI_HOST=http://meilisearch:7700
+      - MEILI_NO_ANALYTICS=true
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
+    volumes:
+      - meili-data:/meili_data
+  vectordb:
+    container_name: vectordb
+    image: pgvector/pgvector:0.8.0-pg15-trixie
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    restart: always
+    volumes:
+      - pgdata2:/var/lib/postgresql/data
+  rag_api:
+    container_name: rag_api
+    image: registry.librechat.ai/danny-avila/librechat-rag-api-dev-lite:latest
+    environment:
+      - DB_HOST=vectordb
+      - RAG_PORT=${RAG_PORT:-8000}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    restart: always
+    depends_on:
+      - vectordb
+  mongo-express:
+    image: mongo-express
+    container_name: mongo-express
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_USERNAME}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_PASSWORD}
+    ports:
+      - 8081:8081
+    depends_on:
+      - mongodb
+    restart: always
+networks:
+  dokploy-network:
+    external: true
+volumes:
+  mongo-data:
+    external: true
+    name: librechat-fbp4x6_mongo-data
+  meili-data:
+    external: true
+    name: librechat-fbp4x6_meili-data
+  pgdata2:
+    external: true
+    name: librechat-fbp4x6_pgdata2
+  librechat-images:
+    external: true
+    name: librechat-fbp4x6_librechat-images
+  librechat-uploads:
+    external: true
+    name: librechat-fbp4x6_librechat-uploads
+  librechat-logs:
+    external: true
+    name: librechat-fbp4x6_librechat-logs
+
+configs:
+  librechat_yaml:
+    content: |
+      # For more information, see the Configuration Guide:
+      # https://www.librechat.ai/docs/configuration/librechat_yaml
+      
+      # Configuration version (required)
+      version: 1.3.13
+      
+      # Cache settings: Set to true to enable caching
+      cache: true
+      
+      # Custom interface configuration
+      interface:
+        customWelcome: 'Welcome to LibreChat! Enjoy your experience.'
+        fileSearch: true
+        endpointsMenu: true
+        modelSelect: true
+        parameters: true
+        sidePanel: true
+        presets: true
+        prompts:
+          use: true
+          create: true
+          share: false
+          public: false
+        bookmarks: true
+        multiConvo: true
+        agents:
+          use: true
+          create: true
+          share: false
+          public: false
+        peoplePicker:
+          users: true
+          groups: true
+          roles: true
+        marketplace:
+          use: false
+        fileCitations: true
+      
+      # Registration configuration
+      registration:
+        socialLogins: ['github', 'google', 'discord', 'openid', 'facebook', 'apple', 'saml']
+      
+      # Agent Actions domain restrictions (OpenAPI spec validation)
+      # SECURITY: If not configured, SSRF targets are blocked (localhost, private IPs, .internal/.local TLDs).
+      actions:
+        allowedDomains:
+          - 'swapi.dev'
+          - 'librechat.ai'
+          - 'google.com'
+      
+      # MCP Server domain restrictions for remote transports (SSE, WebSocket, HTTP)
+      # SECURITY: If not configured, SSRF targets are blocked (localhost, private IPs, .internal/.local TLDs).
+      # To allow internal targets like host.docker.internal, you MUST explicitly add them to allowedDomains.
+      mcpSettings:
+        allowedDomains:
+          - 'robots.mobo.com.mx'  # Dominio del MCP DAX
+          - 'localhost'  # Para el servidor MCP local
+          - 'mcp_cube'   # Servicio MCP Cube por red interna Docker
+      
+      # MCP Servers Configuration
+      # Configuración del servidor MCP DAX para consultas de ventas
+      mcpServers:
+        mcp-dax:
+          type: sse  # Server-Sent Events transport
+          url: https://robots.mobo.com.mx/mcp/mcp-ventas-test
+          title: MCP DAX
+          description: Servidor MCP para consultas de ventas y métricas usando DAX
+          timeout: 60000  # Timeout de 1 minuto (60000 ms)
+          # Headers dinámicos con información del usuario
+          # Los placeholders se reemplazan automáticamente con la información del usuario que inició sesión
+          headers:
+            # Content-Type estándar
+            'Content-Type': 'application/json'
+            # Email del usuario que inició sesión (se reemplaza dinámicamente)
+            'X-User-Email': '{{LIBRECHAT_USER_EMAIL}}'
+            # ID del usuario
+            'X-User-Id': '{{LIBRECHAT_USER_ID}}'
+            # Nombre del usuario
+            'X-User-Name': '{{LIBRECHAT_USER_NAME}}'
+            # Username del usuario
+            'X-User-Username': '{{LIBRECHAT_USER_USERNAME}}'
+            # Rol del usuario
+            'X-User-Role': '{{LIBRECHAT_USER_ROLE}}'
+            # Opcional: Si necesitas un token de autenticación, puedes usar variables de entorno:
+            # 'Authorization': 'Bearer <MCP_DAX_TOKEN env>'
+            # O si cada usuario tiene su propio token, puedes usar customUserVars (ver más abajo)
+        mcp-dax-test:
+            type: streamable-http  # HTTP transport (compatible con Webhooks de n8n)
+            # IMPORTANTE: Reemplaza esta URL con la URL completa de tu webhook en n8n
+            # Para obtenerla: n8n → Tu workflow → Nodo Webhook → Copia "Production URL"
+            # Ejemplo: https://tu-n8n-instance.com/webhook/dev-testing
+            url: https://robots.mobo.com.mx/webhook/dev-testing
+            title: MCP DAX Test
+            description: Servidor MCP para pruebas de desarrollo usando DAX
+            timeout: 60000  # Timeout de 1 minuto (60000 ms)
+            # Headers dinámicos con información del usuario
+            # Los placeholders se reemplazan automáticamente con la información del usuario que inició sesión
+            headers:
+              # Content-Type estándar
+              'Content-Type': 'application/json'
+              # Email del usuario que inició sesión (se reemplaza dinámicamente)
+              'X-User-Email': '{{LIBRECHAT_USER_EMAIL}}'
+              # ID del usuario
+              'X-User-Id': '{{LIBRECHAT_USER_ID}}'
+              # Nombre del usuario
+              'X-User-Name': '{{LIBRECHAT_USER_NAME}}'
+              # Username del usuario
+              'X-User-Username': '{{LIBRECHAT_USER_USERNAME}}'
+              # Rol del usuario
+              'X-User-Role': '{{LIBRECHAT_USER_ROLE}}'
+            # Opcional: Si necesitas un token de autenticación, puedes usar variables de entorno:
+            # 'Authorization': 'Bearer <MCP_DAX_TOKEN env>'
+            # O si cada usuario tiene su propio token, puedes usar customUserVars (ver más abajo)
+        mcp_cube_demo:
+          type: streamable-http  # HTTP transport interno Docker
+          url: http://mcp_cube:8000/mcp
+          title: MCP Cube Demo
+          description: Servidor MCP Cube por red interna Docker
+          timeout: 60000
+          # Contacto creador: erios@mobo.com.mx
+          headers:
+            'Content-Type': 'application/json'
+            'X-User-Email': '{{LIBRECHAT_USER_EMAIL}}'
+            'X-User-Id': '{{LIBRECHAT_USER_ID}}'
+            'X-User-Name': '{{LIBRECHAT_USER_NAME}}'
+            'X-User-Username': '{{LIBRECHAT_USER_USERNAME}}'
+            'X-User-Role': '{{LIBRECHAT_USER_ROLE}}'
+        mcp-postgres-rbac:
+          type: streamable-http
+          url: https://robots.mobo.com.mx/webhook/mcp # La URL donde corre tu código de Node.js
+          title: MCP RBAC n8n
+          description: Servidor para consulta de documentos con control de acceso por roles
+          timeout: 60000
+          headers:
+            # Content-Type estándar
+            'Content-Type': 'application/json'
+            # Email del usuario que inició sesión (se reemplaza dinámicamente)
+            'X-User-Email': '{{LIBRECHAT_USER_EMAIL}}'
+            # ID del usuario
+            'X-User-Id': '{{LIBRECHAT_USER_ID}}'
+            # Nombre del usuario
+            'X-User-Name': '{{LIBRECHAT_USER_NAME}}'
+            # Username del usuario
+            'X-User-Username': '{{LIBRECHAT_USER_USERNAME}}'
+            # Rol del usuario
+            'X-User-Role': '{{LIBRECHAT_USER_ROLE}}'
+            # Definition of custom endpoints
+      # Definition of custom endpoints
+      endpoints:
+        agents: {}
+
+
