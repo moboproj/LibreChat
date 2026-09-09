@@ -130,9 +130,9 @@
           <div class="form-group">
             <label>Rol</label>
             <select v-model="formData.role">
-              <option value="USER">USER</option>
-              <option value="STORE">STORE</option>
-              <option value="ADMIN">ADMIN</option>
+              <option v-for="role in availableRoles" :key="role" :value="role">
+                {{ role }}
+              </option>
             </select>
           </div>
           <div class="form-actions">
@@ -163,6 +163,7 @@ export default {
       showPassword: false,
       copyFeedback: '📋',
       editingUser: null,
+      availableRoles: ['USER', 'STORE', 'ADMIN'],
       formData: {
         email: '',
         name: '',
@@ -173,8 +174,22 @@ export default {
   },
   mounted() {
     this.loadUsers();
+    this.loadRoles();
   },
   methods: {
+    async loadRoles() {
+      try {
+        const response = await this.$axios.get('/api/roles?limit=200');
+        const names = (response.data.documents || [])
+          .map((role) => role.name)
+          .filter(Boolean);
+        if (names.length) {
+          this.availableRoles = names;
+        }
+      } catch (error) {
+        console.error('Error loading roles:', error);
+      }
+    },
     async loadUsers() {
       this.loading = true;
       try {
