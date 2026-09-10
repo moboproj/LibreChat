@@ -287,7 +287,11 @@ configs:
             'X-User-Username': '{{LIBRECHAT_USER_USERNAME}}'
             # Rol del usuario
             'X-User-Role': '{{LIBRECHAT_USER_ROLE}}'
-            # Definition of custom endpoints
+      # Chat selector: only agents. Builder still sees providers from ENDPOINTS.
+      modelSpecs:
+        addedEndpoints:
+          - agents
+
       # Definition of custom endpoints
       endpoints:
         agents: {}
