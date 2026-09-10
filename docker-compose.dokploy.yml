@@ -17,8 +17,13 @@ services:
     restart: always
     extra_hosts:
       - host.docker.internal:host-gateway
+    # Multi-stage WORKDIR is /app/api; dotenv would miss /app/.env without this.
+    # env_file injects Dokploy Environment keys into process.env (same as deploy-compose).
+    env_file:
+      - .env
     environment:
       - HOST=0.0.0.0
+      - NODE_ENV=production
       - MONGO_URI=mongodb://mongodb:27017/LibreChat
       - MEILI_HOST=http://meilisearch:7700
       - RAG_PORT=${RAG_PORT:-8000}
@@ -59,8 +64,9 @@ services:
     volumes:
       - librechat-images:/app/client/public/images
       - librechat-uploads:/app/uploads
-      - librechat-logs:/app/logs
+      - librechat-logs:/app/api/logs
       - ./.env:/app/.env
+      - ./.env:/app/api/.env
     networks:
       - default
       - dokploy-network
