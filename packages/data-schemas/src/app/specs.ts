@@ -51,6 +51,17 @@ export function processModelSpecs(
         'modelSpecs.enforce is true but list is empty — enforcement disabled at runtime.',
       );
     }
+    /**
+     * `addedEndpoints`-only configs (empty list) restrict the chat selector while
+     * leaving provider endpoints available for the agent builder via ENDPOINTS.
+     * Dropping the whole block here made that pattern a no-op at runtime.
+     */
+    if ((_modelSpecs.addedEndpoints?.length ?? 0) > 0) {
+      return {
+        ...specsConfig,
+        list: [],
+      };
+    }
     return undefined;
   }
 

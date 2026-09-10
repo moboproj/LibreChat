@@ -10,6 +10,30 @@ describe('processModelSpecs', () => {
     expect(processModelSpecs(undefined, undefined, undefined)).toBeUndefined();
   });
 
+  it('preserves addedEndpoints when the modelSpecs list is empty', () => {
+    const result = processModelSpecs(
+      undefined,
+      {
+        enforce: false,
+        prioritize: true,
+        list: [],
+        addedEndpoints: [EModelEndpoint.agents],
+      } as TCustomConfig['modelSpecs'],
+      { modelSelect: true },
+    );
+
+    expect(result).toEqual({
+      enforce: false,
+      prioritize: true,
+      list: [],
+      addedEndpoints: [EModelEndpoint.agents],
+    });
+  });
+
+  it('returns undefined for an empty list without addedEndpoints', () => {
+    expect(processModelSpecs(undefined, specsConfig([]), undefined)).toBeUndefined();
+  });
+
   it('keeps specs targeting system endpoints', () => {
     const result = processModelSpecs(
       undefined,
