@@ -208,6 +208,7 @@ configs:
           - 'robots.mobo.com.mx'  # Dominio del MCP DAX
           - 'localhost'  # Para el servidor MCP local
           - 'mcp_cube'   # Servicio MCP Cube por red interna Docker
+          - '*.ngrok-free.app'  # MOBO TEST mcp-rbac (Mongo); keep usable even if the tunnel is down
       
       # YAML MCPs unused by agents (mcp-dax, mcp-dax-test, mcp-postgres-rbac) were
       # removed: they 404'd or duplicated Mongo servers (ventas-2). Cube demo stays.
