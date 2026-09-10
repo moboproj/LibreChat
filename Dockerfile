@@ -57,9 +57,7 @@ COPY --chown=node:node . .
 RUN \
     # React client build with configurable memory
     NODE_OPTIONS="--max-old-space-size=${NODE_MAX_OLD_SPACE_SIZE}" npm run frontend; \
-    # Skip npm prune: --production can hang for a long time in this monorepo Docker build
-    # (Dokploy showed no progress after the deprecation warning). Larger image, reliable build.
-    echo "Skipping npm prune for reliable Docker builds"; \
+    npm prune --production; \
     npm cache clean --force
 
 # Optional build metadata surfaced in Settings -> About for support triage.

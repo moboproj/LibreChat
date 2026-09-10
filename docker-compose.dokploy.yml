@@ -8,8 +8,9 @@ services:
       - rag_api
     build:
       context: .
-      dockerfile: Dockerfile
-    image: omnichat-feature-sso:dev
+      dockerfile: Dockerfile.multi
+      target: api-build
+    image: omnichat-feature-sso:multi
     configs:
       - source: librechat_yaml
         target: /app/librechat.yaml
