@@ -24,6 +24,8 @@ services:
     environment:
       - HOST=0.0.0.0
       - NODE_ENV=production
+      # Dockerfile.multi WORKDIR is /app/api; a relative CONFIG_PATH would miss the mounted yaml.
+      - CONFIG_PATH=/app/librechat.yaml
       - MONGO_URI=mongodb://mongodb:27017/LibreChat
       - MEILI_HOST=http://meilisearch:7700
       - RAG_PORT=${RAG_PORT:-8000}
