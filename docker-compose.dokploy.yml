@@ -209,60 +209,9 @@ configs:
           - 'localhost'  # Para el servidor MCP local
           - 'mcp_cube'   # Servicio MCP Cube por red interna Docker
       
-      # MCP Servers Configuration
-      # Configuración del servidor MCP DAX para consultas de ventas
+      # YAML MCPs unused by agents (mcp-dax, mcp-dax-test, mcp-postgres-rbac) were
+      # removed: they 404'd or duplicated Mongo servers (ventas-2). Cube demo stays.
       mcpServers:
-        mcp-dax:
-          type: sse  # Server-Sent Events transport
-          url: https://robots.mobo.com.mx/mcp/mcp-ventas-test
-          title: MCP DAX
-          description: Servidor MCP para consultas de ventas y métricas usando DAX
-          timeout: 60000  # Timeout de 1 minuto (60000 ms)
-          # Headers dinámicos con información del usuario
-          # Los placeholders se reemplazan automáticamente con la información del usuario que inició sesión
-          headers:
-            # Content-Type estándar
-            'Content-Type': 'application/json'
-            # Email del usuario que inició sesión (se reemplaza dinámicamente)
-            'X-User-Email': '{{LIBRECHAT_USER_EMAIL}}'
-            # ID del usuario
-            'X-User-Id': '{{LIBRECHAT_USER_ID}}'
-            # Nombre del usuario
-            'X-User-Name': '{{LIBRECHAT_USER_NAME}}'
-            # Username del usuario
-            'X-User-Username': '{{LIBRECHAT_USER_USERNAME}}'
-            # Rol del usuario
-            'X-User-Role': '{{LIBRECHAT_USER_ROLE}}'
-            # Opcional: Si necesitas un token de autenticación, puedes usar variables de entorno:
-            # 'Authorization': 'Bearer <MCP_DAX_TOKEN env>'
-            # O si cada usuario tiene su propio token, puedes usar customUserVars (ver más abajo)
-        mcp-dax-test:
-            type: streamable-http  # HTTP transport (compatible con Webhooks de n8n)
-            # IMPORTANTE: Reemplaza esta URL con la URL completa de tu webhook en n8n
-            # Para obtenerla: n8n → Tu workflow → Nodo Webhook → Copia "Production URL"
-            # Ejemplo: https://tu-n8n-instance.com/webhook/dev-testing
-            url: https://robots.mobo.com.mx/webhook/dev-testing
-            title: MCP DAX Test
-            description: Servidor MCP para pruebas de desarrollo usando DAX
-            timeout: 60000  # Timeout de 1 minuto (60000 ms)
-            # Headers dinámicos con información del usuario
-            # Los placeholders se reemplazan automáticamente con la información del usuario que inició sesión
-            headers:
-              # Content-Type estándar
-              'Content-Type': 'application/json'
-              # Email del usuario que inició sesión (se reemplaza dinámicamente)
-              'X-User-Email': '{{LIBRECHAT_USER_EMAIL}}'
-              # ID del usuario
-              'X-User-Id': '{{LIBRECHAT_USER_ID}}'
-              # Nombre del usuario
-              'X-User-Name': '{{LIBRECHAT_USER_NAME}}'
-              # Username del usuario
-              'X-User-Username': '{{LIBRECHAT_USER_USERNAME}}'
-              # Rol del usuario
-              'X-User-Role': '{{LIBRECHAT_USER_ROLE}}'
-            # Opcional: Si necesitas un token de autenticación, puedes usar variables de entorno:
-            # 'Authorization': 'Bearer <MCP_DAX_TOKEN env>'
-            # O si cada usuario tiene su propio token, puedes usar customUserVars (ver más abajo)
         mcp_cube_demo:
           type: streamable-http  # HTTP transport interno Docker
           url: http://mcp_cube:8000/mcp
@@ -276,25 +225,6 @@ configs:
             'X-User-Id': '{{LIBRECHAT_USER_ID}}'
             'X-User-Name': '{{LIBRECHAT_USER_NAME}}'
             'X-User-Username': '{{LIBRECHAT_USER_USERNAME}}'
-            'X-User-Role': '{{LIBRECHAT_USER_ROLE}}'
-        mcp-postgres-rbac:
-          type: streamable-http
-          url: https://robots.mobo.com.mx/webhook/mcp # La URL donde corre tu código de Node.js
-          title: MCP RBAC n8n
-          description: Servidor para consulta de documentos con control de acceso por roles
-          timeout: 60000
-          headers:
-            # Content-Type estándar
-            'Content-Type': 'application/json'
-            # Email del usuario que inició sesión (se reemplaza dinámicamente)
-            'X-User-Email': '{{LIBRECHAT_USER_EMAIL}}'
-            # ID del usuario
-            'X-User-Id': '{{LIBRECHAT_USER_ID}}'
-            # Nombre del usuario
-            'X-User-Name': '{{LIBRECHAT_USER_NAME}}'
-            # Username del usuario
-            'X-User-Username': '{{LIBRECHAT_USER_USERNAME}}'
-            # Rol del usuario
             'X-User-Role': '{{LIBRECHAT_USER_ROLE}}'
       # Chat selector: only agents. Builder still sees providers from ENDPOINTS.
       modelSpecs:
