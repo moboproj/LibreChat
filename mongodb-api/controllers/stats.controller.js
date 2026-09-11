@@ -1,11 +1,22 @@
 const Stats = require('../models/stats.model');
 const User = require('../models/user.model');
+const { sendError, fromException } = require('../utils/httpError');
+
+function resolveSince(range) {
+  const now = Date.now();
+  if (range === '7d') {
+    return new Date(now - 7 * 24 * 60 * 60 * 1000);
+  }
+  // default 30d
+  return new Date(now - 30 * 24 * 60 * 60 * 1000);
+}
 
 const getCollectionsStats = async (req, res) => {
   try {
-    const now = new Date();
-    const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const range = req.query.range === '7d' ? '7d' : '30d';
+    const since = resolveSince(range);
+    const last7Days = resolveSince('7d');
+    const last30Days = resolveSince('30d');
 
     const [
       totalMessages,
@@ -37,15 +48,17 @@ const getCollectionsStats = async (req, res) => {
     ] = await Promise.all([
       Stats.countMessagesSince(last7Days),
       User.countCreatedSince(last30Days),
-      Stats.messagesByDay(last30Days),
-      Stats.activeUsersByDay(last30Days),
-      Stats.messagesByModel(),
-      Stats.messagesByEndpoint(),
-      Stats.tokensByType(),
-      Stats.topUsersByTokens(),
+      Stats.messagesByDay(since),
+      Stats.activeUsersByDay(since),
+      Stats.messagesByModel(since),
+      Stats.messagesByEndpoint(since),
+      Stats.tokensByType(since),
+      Stats.topUsersByTokens(since),
     ]);
 
     return res.json({
+      range,
+      since,
       totals: {
         totalMessages,
         totalUsers,
@@ -65,10 +78,11 @@ const getCollectionsStats = async (req, res) => {
       topUsersByTokens,
     });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return fromException(res, error);
   }
 };
 
 module.exports = {
   getCollectionsStats,
+  sendError,
 };

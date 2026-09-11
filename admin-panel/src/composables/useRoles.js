@@ -1,5 +1,14 @@
-import { ref, computed } from 'vue';
-import { listRoles, createRole, updateRole, deleteRole as deleteRoleRequest } from '../api/roles';
+import { ref } from 'vue';
+import {
+  listRoles,
+  listRoleUsers,
+  createRole,
+  updateRole,
+  deleteRole as deleteRoleRequest,
+} from '../api/roles';
+import { getErrorMessage, getErrorTitle } from '../utils/errors';
+import { useFeedback } from './useFeedback';
+import { useServerPagination } from './useServerPagination';
 
 function getDefaultPermissions() {
   return {
@@ -38,17 +47,26 @@ const permissionMap = {
 };
 
 export function useRoles() {
+  const { showError, showSuccess, confirm } = useFeedback();
   const roles = ref([]);
   const loading = ref(false);
+  const usersLoading = ref(false);
   const showCreateForm = ref(false);
+  const showUsers = ref(false);
+  const roleUsers = ref([]);
+  const selectedRole = ref(null);
   const creatingStore = ref(false);
+  const hasStoreRole = ref(false);
   const editingRole = ref(null);
   const formData = ref({
     name: '',
     permissions: getDefaultPermissions(),
   });
 
-  const hasStoreRole = computed(() => roles.value.some((role) => role.name === 'STORE'));
+  const pagination = useServerPagination({
+    defaultPageSize: 10,
+    onChange: () => loadRoles(),
+  });
 
   function isProtectedRole(name) {
     return name === 'ADMIN' || name === 'USER' || name === 'STORE';
@@ -57,14 +75,42 @@ export function useRoles() {
   async function loadRoles() {
     loading.value = true;
     try {
-      const response = await listRoles(100);
+      const response = await listRoles({
+        page: pagination.page.value,
+        limit: pagination.pageSize.value,
+        search: pagination.searchDebounced.value,
+      });
       roles.value = response.data.documents || [];
+      hasStoreRole.value = Boolean(response.data.hasStore);
+      pagination.applyMeta(response.data);
     } catch (error) {
       console.error('Error loading roles:', error);
-      alert('Error cargando roles: ' + error.message);
+      showError(getErrorTitle(error, 'Error al cargar roles'), getErrorMessage(error));
     } finally {
       loading.value = false;
     }
+  }
+
+  async function openRoleUsers(role) {
+    selectedRole.value = role;
+    showUsers.value = true;
+    usersLoading.value = true;
+    roleUsers.value = [];
+    try {
+      const response = await listRoleUsers(role._id, { page: 1, limit: 50 });
+      roleUsers.value = response.data.documents || [];
+    } catch (error) {
+      showError(getErrorTitle(error, 'Error al cargar usuarios del rol'), getErrorMessage(error));
+      showUsers.value = false;
+    } finally {
+      usersLoading.value = false;
+    }
+  }
+
+  function closeRoleUsers() {
+    showUsers.value = false;
+    selectedRole.value = null;
+    roleUsers.value = [];
   }
 
   function openCreateForm() {
@@ -80,10 +126,10 @@ export function useRoles() {
     creatingStore.value = true;
     try {
       await createRole({ name: 'STORE' });
+      showSuccess('Rol STORE', 'El rol STORE se creó correctamente.');
       await loadRoles();
     } catch (error) {
-      const message = error.response?.data?.error || error.message;
-      alert('No se pudo crear STORE: ' + message);
+      showError(getErrorTitle(error, 'No se pudo crear STORE'), getErrorMessage(error));
     } finally {
       creatingStore.value = false;
     }
@@ -113,14 +159,15 @@ export function useRoles() {
       };
       if (editingRole.value) {
         await updateRole(editingRole.value._id, payload);
+        showSuccess('Rol actualizado', 'Los permisos se guardaron correctamente.');
       } else {
         await createRole(payload);
+        showSuccess('Rol creado', 'El rol se creó correctamente.');
       }
       closeForm();
       await loadRoles();
     } catch (error) {
-      const message = error.response?.data?.error || error.message;
-      alert('Error guardando rol: ' + message);
+      showError(getErrorTitle(error, 'Error al guardar rol'), getErrorMessage(error));
     }
   }
 
@@ -134,27 +181,45 @@ export function useRoles() {
   }
 
   async function removeRole(id) {
-    if (!confirm('¿Eliminar rol?')) return;
+    const ok = await confirm('Eliminar rol', '¿Seguro que deseas eliminar este rol?', {
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     try {
       await deleteRoleRequest(id);
-      alert('Rol eliminado');
+      showSuccess('Rol eliminado', 'El rol se eliminó correctamente.');
       await loadRoles();
     } catch (error) {
-      alert('Error eliminando rol: ' + error.message);
+      showError(getErrorTitle(error, 'Error al eliminar rol'), getErrorMessage(error));
     }
   }
 
   return {
     roles,
     loading,
+    usersLoading,
     showCreateForm,
+    showUsers,
+    roleUsers,
+    selectedRole,
     creatingStore,
     editingRole,
     formData,
     permissionMap,
     hasStoreRole,
     isProtectedRole,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+    total: pagination.total,
+    totalPages: pagination.totalPages,
+    rangeLabel: pagination.rangeLabel,
+    searchQuery: pagination.searchQuery,
+    nextPage: pagination.nextPage,
+    prevPage: pagination.prevPage,
+    setPageSize: pagination.setPageSize,
     loadRoles,
+    openRoleUsers,
+    closeRoleUsers,
     openCreateForm,
     createStoreRole,
     editRole,

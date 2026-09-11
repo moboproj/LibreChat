@@ -1,11 +1,15 @@
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import yaml from 'js-yaml';
 import {
   listMcpServers,
+  getMcpServer,
   createMcpServer,
   updateMcpServer,
   deleteMcpServer as deleteMcpServerRequest,
 } from '../api/mcpServers';
+import { getErrorMessage, getErrorTitle } from '../utils/errors';
+import { useFeedback } from './useFeedback';
+import { useServerPagination } from './useServerPagination';
 
 const emptyForm = () => ({
   serverName: '',
@@ -49,32 +53,58 @@ function normalizeServer(server) {
 }
 
 export function useMcpServers() {
+  const { showError, showSuccess, confirm } = useFeedback();
   const servers = ref([]);
-  const searchQuery = ref('');
   const loading = ref(false);
+  const detailLoading = ref(false);
   const showCreateForm = ref(false);
+  const showDetail = ref(false);
+  const selectedServer = ref(null);
   const editingServer = ref(null);
   const mode = ref('form');
   const formData = ref(emptyForm());
 
-  const filteredServers = computed(() => {
-    const q = searchQuery.value.toLowerCase();
-    if (!q) return servers.value;
-    return servers.value.filter((server) => server.serverName?.toLowerCase().includes(q));
+  const pagination = useServerPagination({
+    defaultPageSize: 10,
+    onChange: () => loadServers(),
   });
 
   async function loadServers() {
     loading.value = true;
     try {
-      const response = await listMcpServers(100);
+      const response = await listMcpServers({
+        page: pagination.page.value,
+        limit: pagination.pageSize.value,
+        search: pagination.searchDebounced.value,
+      });
       const rawServers = response.data.documents || [];
       servers.value = rawServers.map(normalizeServer);
+      pagination.applyMeta(response.data);
     } catch (error) {
       console.error('Error loading MCP servers:', error);
-      alert('Error cargando MCP Servers: ' + error.message);
+      showError(getErrorTitle(error, 'Error al cargar MCP Servers'), getErrorMessage(error));
     } finally {
       loading.value = false;
     }
+  }
+
+  async function openDetail(server) {
+    showDetail.value = true;
+    selectedServer.value = server;
+    detailLoading.value = true;
+    try {
+      const response = await getMcpServer(server._id || server.serverName);
+      selectedServer.value = normalizeServer(response.data.document || server);
+    } catch (error) {
+      showError(getErrorTitle(error, 'Error al cargar MCP'), getErrorMessage(error));
+    } finally {
+      detailLoading.value = false;
+    }
+  }
+
+  function closeDetail() {
+    showDetail.value = false;
+    selectedServer.value = null;
   }
 
   function getPayloadFromForm() {
@@ -129,7 +159,7 @@ export function useMcpServers() {
       }
       mode.value = newMode;
     } catch (e) {
-      alert('Error al convertir entre formatos: ' + e.message);
+      showError('Error de formato', e.message || 'No se pudo convertir entre formatos');
     }
   }
 
@@ -169,15 +199,15 @@ export function useMcpServers() {
 
       if (editingServer.value) {
         await updateMcpServer(editingServer.value._id, payload);
-        alert('MCP Server actualizado');
+        showSuccess('MCP actualizado', 'El servidor se actualizó correctamente.');
       } else {
         await createMcpServer(payload);
-        alert('MCP Server creado');
+        showSuccess('MCP creado', 'El servidor se creó correctamente.');
       }
       closeForm();
       await loadServers();
     } catch (error) {
-      alert('Error guardando MCP Server: ' + error.message);
+      showError(getErrorTitle(error, 'Error al guardar MCP'), getErrorMessage(error));
     }
   }
 
@@ -194,26 +224,41 @@ export function useMcpServers() {
   }
 
   async function removeServer(id) {
-    if (!confirm('¿Eliminar MCP Server?')) return;
+    const ok = await confirm('Eliminar MCP Server', '¿Seguro que deseas eliminar este servidor?', {
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     try {
       await deleteMcpServerRequest(id);
-      alert('MCP Server eliminado');
+      showSuccess('MCP eliminado', 'El servidor se eliminó correctamente.');
       await loadServers();
     } catch (error) {
-      alert('Error eliminando MCP Server: ' + error.message);
+      showError(getErrorTitle(error, 'Error al eliminar MCP'), getErrorMessage(error));
     }
   }
 
   return {
     servers,
-    filteredServers,
-    searchQuery,
     loading,
+    detailLoading,
     showCreateForm,
+    showDetail,
+    selectedServer,
     editingServer,
     mode,
     formData,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+    total: pagination.total,
+    totalPages: pagination.totalPages,
+    rangeLabel: pagination.rangeLabel,
+    searchQuery: pagination.searchQuery,
+    nextPage: pagination.nextPage,
+    prevPage: pagination.prevPage,
+    setPageSize: pagination.setPageSize,
     loadServers,
+    openDetail,
+    closeDetail,
     setMode,
     editServer,
     saveServer,

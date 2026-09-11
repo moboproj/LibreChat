@@ -2,6 +2,7 @@ const express = require('express');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const {
   getMCPServers,
+  getMCPServerById,
   createMCPServer,
   updateMCPServer,
   deleteMCPServer,
@@ -13,6 +14,7 @@ router.use(requireAuth, requireAdmin);
 
 router.get('/', getMCPServers);
 router.post('/', createMCPServer);
+router.get('/:id', getMCPServerById);
 router.put('/:id', updateMCPServer);
 router.delete('/:id', deleteMCPServer);
 

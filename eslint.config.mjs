@@ -62,6 +62,8 @@ export default [
       '**/node_modules/**/*',
       'venv/**/*',
       '.devcontainer/**/*',
+      // Separate Vue admin app; not covered by client/tsconfig type-aware lint
+      'admin-panel/**/*',
     ],
   },
   ...fixupConfigRules(

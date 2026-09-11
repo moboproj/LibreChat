@@ -1,0 +1,22 @@
+/// <reference types="vite/client" />
+
+interface ImportMetaEnv {
+  readonly VITE_STATS_USE_MOCK?: string;
+  readonly VITE_API_PROXY?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+
+declare module '*.vue' {
+  import type { DefineComponent } from 'vue';
+  const component: DefineComponent<Record<string, unknown>, Record<string, unknown>, unknown>;
+  export default component;
+}
+
+declare module 'vue3-apexcharts' {
+  import type { DefineComponent } from 'vue';
+  const VueApexCharts: DefineComponent<Record<string, unknown>, Record<string, unknown>, unknown>;
+  export default VueApexCharts;
+}

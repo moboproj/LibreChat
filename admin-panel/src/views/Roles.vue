@@ -1,96 +1,194 @@
 <template>
-  <div class="roles-container">
-    <div class="header-actions">
-      <button class="btn btn-primary" @click="openCreateForm">➕ Nuevo Rol</button>
-      <button
-        class="btn btn-secondary"
-        :disabled="hasStoreRole || creatingStore"
-        @click="createStoreRole"
-      >
-        {{ hasStoreRole ? 'STORE ya existe' : 'Crear STORE (copia USER)' }}
-      </button>
+  <div class="space-y-4 tracking-tight">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <p class="text-xs uppercase tracking-wider text-[var(--text-muted)]">Catálogo</p>
+        <h2 class="text-xl font-semibold text-[var(--text)]">Roles</h2>
+        <p class="text-sm text-[var(--text-muted)]">Permisos por rol · paginación en API</p>
+      </div>
+      <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <button
+          type="button"
+          class="ui-btn-secondary w-full sm:w-auto"
+          :disabled="hasStoreRole || creatingStore"
+          @click="createStoreRole"
+        >
+          {{ hasStoreRole ? 'STORE ya existe' : 'Crear STORE' }}
+        </button>
+        <button type="button" class="ui-btn-primary w-full sm:w-auto" @click="openCreateForm">
+          Nuevo rol
+        </button>
+      </div>
     </div>
 
-    <div v-if="loading" class="loading">Cargando roles...</div>
+    <UiCard class-name="mb-1">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <input
+          v-model="searchQuery"
+          class="ui-input sm:max-w-sm"
+          type="search"
+          placeholder="Buscar rol…"
+        />
+        <p class="text-xs text-[var(--text-muted)]">{{ total }} rol(es)</p>
+      </div>
+    </UiCard>
 
-    <div v-if="!loading && roles.length" class="roles-grid">
-      <div v-for="role in roles" :key="role._id" class="role-card">
-        <div class="card-header">
-          <h4>{{ role.name }}</h4>
-          <div class="card-actions">
-            <button class="btn-icon" @click="editRole(role)" title="Editar">✏️</button>
-            <button
-              v-if="!isProtectedRole(role.name)"
-              class="btn-icon danger"
-              @click="removeRole(role._id)"
-              title="Eliminar"
-            >
-              🗑️
-            </button>
+    <div v-if="loading">
+      <CardSkeleton :count="4" :cols="2" :lines="5" />
+    </div>
+    <div v-else-if="!roles.length" class="py-16 text-center text-sm text-[var(--text-muted)]">
+      No hay roles
+    </div>
+
+    <template v-else>
+      <div class="grid grid-cols-1 gap-3 xl:grid-cols-2">
+        <UiCard v-for="role in roles" :key="role._id">
+          <div class="mb-3 flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h3 class="text-sm font-semibold text-[var(--text)]">{{ role.name }}</h3>
+              <p class="text-xs text-[var(--text-muted)]">
+                {{ Object.keys(role.permissions || {}).length }} grupos ·
+                {{ role.userCount || 0 }} usuario(s)
+              </p>
+            </div>
+            <div class="flex gap-1">
+              <button
+                type="button"
+                class="ui-btn-ghost px-2 py-1 text-xs"
+                @click="openRoleUsers(role)"
+              >
+                Usuarios
+              </button>
+              <button type="button" class="ui-btn-ghost px-2 py-1 text-xs" @click="editRole(role)">
+                Editar
+              </button>
+              <button
+                v-if="!isProtectedRole(role.name)"
+                type="button"
+                class="ui-btn-ghost px-2 py-1 text-xs text-red-300"
+                @click="removeRole(role._id)"
+              >
+                Eliminar
+              </button>
+            </div>
           </div>
-        </div>
-        <div class="card-body">
-          <div class="permissions-list">
-            <h5>Permisos:</h5>
-            <div v-for="(perms, type) in role.permissions" :key="type" class="perm-group">
-              <div class="perm-type">{{ type }}</div>
-              <div class="perm-values">
+          <div class="max-h-48 space-y-2 overflow-y-auto pr-1">
+            <div
+              v-for="(perms, type) in role.permissions"
+              :key="type"
+              class="rounded-lg border p-2"
+              style="border-color: var(--border); background: rgba(0, 0, 0, 0.2)"
+            >
+              <p class="mb-1 text-[10px] font-semibold uppercase text-[var(--text-muted)]">
+                {{ type }}
+              </p>
+              <div class="flex flex-wrap gap-1">
                 <span
                   v-for="(value, perm) in perms"
                   :key="perm"
-                  :class="['perm-badge', { active: value }]"
+                  class="rounded px-1.5 py-0.5 text-[10px]"
+                  :style="
+                    value
+                      ? 'background: rgba(16,163,127,0.18); color: var(--accent)'
+                      : 'background: rgba(255,255,255,0.05); color: var(--text-muted)'
+                  "
                 >
-                  {{ perm }}: {{ value ? '✓' : '✗' }}
+                  {{ perm }}
                 </span>
               </div>
             </div>
+          </div>
+        </UiCard>
+      </div>
+
+      <UiCard padding="sm">
+        <PaginationBar
+          :page="page"
+          :page-size="pageSize"
+          :total-pages="totalPages"
+          :range-label="rangeLabel"
+          :loading="loading"
+          @prev="prevPage"
+          @next="nextPage"
+          @update:page-size="setPageSize"
+        />
+      </UiCard>
+    </template>
+
+    <div v-if="showUsers" class="ui-modal-overlay" @click="closeRoleUsers">
+      <div class="ui-modal max-w-2xl" @click.stop>
+        <div class="mb-4 flex items-start justify-between gap-2">
+          <div>
+            <h3 class="text-lg font-semibold text-[var(--text)]">
+              Usuarios · {{ selectedRole?.name }}
+            </h3>
+            <p class="text-xs text-[var(--text-muted)]">
+              {{ roleUsers.length }} en esta página (máx. 50)
+            </p>
+          </div>
+          <button type="button" class="ui-btn-secondary" @click="closeRoleUsers">Cerrar</button>
+        </div>
+        <div v-if="usersLoading" class="py-8 text-center text-sm text-[var(--text-muted)]">
+          Cargando…
+        </div>
+        <div v-else-if="!roleUsers.length" class="py-8 text-center text-sm text-[var(--text-muted)]">
+          Nadie tiene este rol
+        </div>
+        <div v-else class="max-h-[50vh] space-y-2 overflow-y-auto">
+          <div
+            v-for="user in roleUsers"
+            :key="user._id"
+            class="rounded-lg border px-3 py-2 text-sm"
+            style="border-color: var(--border)"
+          >
+            <p class="text-[var(--text)]">{{ user.email }}</p>
+            <p class="text-xs text-[var(--text-muted)]">
+              {{ user.name || '—' }} · {{ user.provider || '—' }} ·
+              {{ user.conversationCount || 0 }} conv
+            </p>
           </div>
         </div>
       </div>
     </div>
 
-    <div v-if="!loading && !roles.length" class="empty-state">
-      <p>No hay roles configurados</p>
-    </div>
-
-    <div v-if="showCreateForm" class="modal-overlay" @click="closeForm">
-      <div class="modal" @click.stop>
-        <h3>{{ editingRole ? 'Editar Rol' : 'Nuevo Rol' }}</h3>
-        <form @submit.prevent="saveRole">
-          <div class="form-group">
-            <label>Nombre del Rol</label>
+    <div v-if="showCreateForm" class="ui-modal-overlay" @click="closeForm">
+      <div class="ui-modal max-w-3xl" @click.stop>
+        <h3 class="mb-4 text-lg font-semibold text-[var(--text)]">
+          {{ editingRole ? 'Editar rol' : 'Nuevo rol' }}
+        </h3>
+        <form class="space-y-4" @submit.prevent="saveRole">
+          <div>
+            <label class="ui-label">Nombre del rol</label>
             <input
               v-model="formData.name"
+              class="ui-input"
               type="text"
               required
               :disabled="Boolean(editingRole)"
             />
           </div>
-          
-          <div class="permissions-editor">
-            <label>Configuración de Permisos</label>
-            <div class="perm-grid-editor">
-              <div v-for="(actions, type) in permissionMap" :key="type" class="perm-type-section">
-                <h6>{{ type }}</h6>
-                <div class="actions-grid">
-                  <label v-for="action in actions" :key="action" class="checkbox-label">
-                    <input 
-                      type="checkbox" 
-                      v-model="formData.permissions[type][action]"
-                    />
-                    {{ action }}
-                  </label>
-                </div>
-              </div>
+          <div class="grid max-h-[50vh] grid-cols-1 gap-3 overflow-y-auto sm:grid-cols-2">
+            <div
+              v-for="(actions, type) in permissionMap"
+              :key="type"
+              class="rounded-lg border p-3"
+              style="border-color: var(--border)"
+            >
+              <p class="mb-2 text-xs font-semibold text-[var(--text)]">{{ type }}</p>
+              <label
+                v-for="action in actions"
+                :key="action"
+                class="mb-1 flex items-center gap-2 text-xs text-[var(--text-muted)]"
+              >
+                <input v-model="formData.permissions[type][action]" type="checkbox" />
+                {{ action }}
+              </label>
             </div>
           </div>
-
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary">
+          <div class="flex flex-col-reverse justify-end gap-2 sm:flex-row">
+            <button type="button" class="ui-btn-secondary" @click="closeForm">Cancelar</button>
+            <button type="submit" class="ui-btn-primary">
               {{ editingRole ? 'Actualizar' : 'Crear' }}
-            </button>
-            <button type="button" class="btn btn-secondary" @click="closeForm">
-              Cancelar
             </button>
           </div>
         </form>
@@ -102,18 +200,36 @@
 <script setup>
 import { onMounted } from 'vue';
 import { useRoles } from '../composables/useRoles';
+import UiCard from '../components/ui/UiCard.vue';
+import PaginationBar from '../components/ui/PaginationBar.vue';
+import CardSkeleton from '../components/ui/CardSkeleton.vue';
 
 const {
   roles,
   loading,
+  usersLoading,
   showCreateForm,
+  showUsers,
+  roleUsers,
+  selectedRole,
   creatingStore,
   editingRole,
   formData,
   permissionMap,
   hasStoreRole,
   isProtectedRole,
+  page,
+  pageSize,
+  total,
+  totalPages,
+  rangeLabel,
+  searchQuery,
+  nextPage,
+  prevPage,
+  setPageSize,
   loadRoles,
+  openRoleUsers,
+  closeRoleUsers,
   openCreateForm,
   createStoreRole,
   editRole,
@@ -126,295 +242,3 @@ onMounted(() => {
   loadRoles();
 });
 </script>
-
-<style scoped>
-.roles-container {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.header-actions {
-  display: flex;
-  gap: 15px;
-}
-
-.btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.btn-primary {
-  background: #3b82f6;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #2563eb;
-}
-
-.roles-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-  gap: 20px;
-}
-
-.role-card {
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px;
-  background: #0f172a;
-  border-bottom: 1px solid #334155;
-}
-
-.card-header h4 {
-  margin: 0;
-  color: #f1f5f9;
-}
-
-.card-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.card-body {
-  padding: 15px;
-}
-
-.permissions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.permissions-list h5 {
-  margin: 0 0 10px 0;
-  color: #cbd5e1;
-  font-size: 12px;
-  text-transform: uppercase;
-}
-
-.perm-group {
-  background: #0f172a;
-  padding: 10px;
-  border-radius: 6px;
-}
-
-.perm-type {
-  font-size: 12px;
-  font-weight: 600;
-  color: #60a5fa;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-}
-
-.perm-values {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.perm-badge {
-  font-size: 11px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  background: #475569;
-  color: #cbd5e1;
-}
-
-.perm-badge.active {
-  background: #065f46;
-  color: #86efac;
-}
-
-.btn-icon {
-  background: none;
-  border: none;
-  font-size: 16px;
-  cursor: pointer;
-  padding: 5px 10px;
-  border-radius: 4px;
-  transition: background 0.3s ease;
-}
-
-.btn-icon:hover {
-  background: #475569;
-}
-
-.btn-icon.danger:hover {
-  background: #f87171;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 12px;
-  padding: 25px;
-  max-width: 600px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal h3 {
-  color: #f1f5f9;
-  margin-top: 0;
-  margin-bottom: 20px;
-}
-
-.form-group {
-  margin-bottom: 15px;
-}
-
-.form-group label {
-  display: block;
-  color: #cbd5e1;
-  margin-bottom: 5px;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.form-group input,
-.form-group textarea {
-  width: 100%;
-  padding: 10px 15px;
-  background: #0f172a;
-  border: 1px solid #334155;
-  border-radius: 6px;
-  color: #f1f5f9;
-  font-size: 14px;
-}
-
-.code-input {
-  font-family: 'Courier New', monospace;
-  resize: vertical;
-  min-height: 200px;
-}
-
-.permissions-editor {
-  margin-top: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.permissions-editor > label {
-  font-weight: 600;
-  color: #60a5fa;
-  font-size: 14px;
-}
-
-.perm-grid-editor {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 15px;
-  background: #0f172a;
-  padding: 15px;
-  border-radius: 8px;
-  border: 1px solid #334155;
-}
-
-.perm-type-section {
-  background: #1e293b;
-  padding: 10px;
-  border-radius: 6px;
-  border: 1px solid #334155;
-}
-
-.perm-type-section h6 {
-  margin: 0 0 10px 0;
-  color: #94a3b8;
-  font-size: 12px;
-  text-transform: uppercase;
-  border-bottom: 1px solid #334155;
-  padding-bottom: 5px;
-}
-
-.actions-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #cbd5e1;
-  cursor: pointer;
-}
-
-.checkbox-label input {
-  width: auto !important;
-  margin: 0;
-}
-
-.checkbox-label:hover {
-  color: #f1f5f9;
-}
-
-.form-group small {
-  display: block;
-  color: #64748b;
-  margin-top: 5px;
-  font-size: 12px;
-}
-
-.form-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 20px;
-}
-
-.form-actions button {
-  flex: 1;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.btn-secondary {
-  background: #475569;
-  color: #f1f5f9;
-}
-
-.btn-secondary:hover {
-  background: #64748b;
-}
-
-.loading,
-.empty-state {
-  text-align: center;
-  padding: 40px;
-  color: #cbd5e1;
-}
-</style>

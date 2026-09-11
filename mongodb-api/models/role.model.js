@@ -22,8 +22,18 @@ async function findById(id) {
   return rolesRead().findOne({ _id: new ObjectId(id) });
 }
 
-async function list({ limit = 50 } = {}) {
-  return rolesRead().find({}).limit(limit).sort({ createdAt: -1 }).toArray();
+async function list({ limit = 10, skip = 0, search = '' } = {}) {
+  const filter = {};
+  if (search) {
+    filter.name = { $regex: search, $options: 'i' };
+  }
+
+  const [documents, total] = await Promise.all([
+    rolesRead().find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
+    rolesRead().countDocuments(filter),
+  ]);
+
+  return { documents, total };
 }
 
 async function create(doc) {

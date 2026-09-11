@@ -1,7 +1,15 @@
 import http from './http';
 
-export function listRoles(limit = 100) {
-  return http.get('/api/roles', { params: { limit } });
+export function listRoles({ page = 1, limit = 10, search = '' } = {}) {
+  return http.get('/api/roles', {
+    params: { page, limit, search: search || undefined },
+  });
+}
+
+export function listRoleUsers(id, { page = 1, limit = 10, search = '' } = {}) {
+  return http.get(`/api/roles/${encodeURIComponent(id)}/users`, {
+    params: { page, limit, search: search || undefined },
+  });
 }
 
 export function createRole(payload) {

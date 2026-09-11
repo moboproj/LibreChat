@@ -1,155 +1,237 @@
 <template>
-  <div class="mcp-container">
-    <div class="header-actions">
-      <div class="search-box">
+  <div class="space-y-4 tracking-tight">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p class="text-xs uppercase tracking-wider text-[var(--text-muted)]">Catálogo</p>
+        <h2 class="text-xl font-semibold text-[var(--text)]">MCP Servers</h2>
+        <p class="text-sm text-[var(--text-muted)]">
+          Servidores Model Context Protocol · paginación en API
+        </p>
+      </div>
+      <button type="button" class="ui-btn-primary w-full sm:w-auto" @click="openCreateForm">
+        Nuevo MCP
+      </button>
+    </div>
+
+    <UiCard>
+      <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         <input
           v-model="searchQuery"
-          type="text"
-          placeholder="Buscar MCP Server..."
-          
+          class="ui-input sm:max-w-sm"
+          type="search"
+          placeholder="Buscar MCP por nombre…"
         />
+        <p class="text-xs text-[var(--text-muted)]">{{ total }} servidor(es)</p>
       </div>
-      <button class="btn btn-primary" @click="openCreateForm">➕ Nuevo MCP Server</button>
-    </div>
 
-    <div v-if="loading" class="loading">Cargando MCP Servers...</div>
+      <div v-if="loading" class="py-2">
+        <CardSkeleton :count="pageSize > 4 ? 4 : pageSize" :cols="2" :lines="4" padding="sm" />
+      </div>
+      <div v-else-if="!servers.length" class="py-16 text-center text-sm text-[var(--text-muted)]">
+        No hay MCP Servers
+      </div>
 
-    <div v-if="!loading && filteredServers.length" class="servers-grid">
-      <div v-for="server in filteredServers" :key="server._id" class="server-card">
-        <div class="card-header">
-          <h4>{{ server.serverName }}</h4>
-          <div class="card-actions">
-            <button class="btn-icon" @click="editServer(server)" title="Editar">✏️</button>
-            <button class="btn-icon danger" @click="removeServer(server._id)" title="Eliminar">
-              🗑️
-            </button>
+      <template v-else>
+        <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <UiCard v-for="server in servers" :key="server._id" padding="sm">
+            <div class="mb-2 flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <h3 class="truncate text-sm font-semibold text-[var(--text)]">
+                  {{ server.serverName }}
+                </h3>
+                <p class="truncate text-xs text-[var(--text-muted)]">
+                  {{ server.config?.type || 'unknown' }} ·
+                  {{ server.config?.tools || '0 tools' }}
+                </p>
+              </div>
+              <div class="flex shrink-0 gap-1">
+                <button
+                  type="button"
+                  class="ui-btn-ghost px-2 py-1 text-xs"
+                  @click="openDetail(server)"
+                >
+                  Agentes
+                </button>
+                <button
+                  type="button"
+                  class="ui-btn-ghost px-2 py-1 text-xs"
+                  @click="editServer(server)"
+                >
+                  Editar
+                </button>
+                <button
+                  type="button"
+                  class="ui-btn-ghost px-2 py-1 text-xs text-red-300"
+                  @click="removeServer(server._id)"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </div>
+            <p
+              v-if="server.config?.description"
+              class="mb-2 line-clamp-2 text-xs text-[var(--text-muted)]"
+            >
+              {{ server.config.description }}
+            </p>
+            <p class="truncate font-mono text-[11px] text-[var(--text-muted)]">
+              {{ server.config?.url || '—' }}
+            </p>
+            <p class="mt-2 text-[10px] text-[var(--text-muted)]">
+              Agentes: {{ server.agentCount || 0 }} · Creado: {{ formatDate(server.createdAt) }}
+            </p>
+          </UiCard>
+        </div>
+
+        <div class="mt-4">
+          <PaginationBar
+            :page="page"
+            :page-size="pageSize"
+            :total-pages="totalPages"
+            :range-label="rangeLabel"
+            :loading="loading"
+            @prev="prevPage"
+            @next="nextPage"
+            @update:page-size="setPageSize"
+          />
+        </div>
+      </template>
+    </UiCard>
+
+    <div v-if="showDetail" class="ui-modal-overlay" @click="closeDetail">
+      <div class="ui-modal max-w-2xl" @click.stop>
+        <div class="mb-4 flex items-start justify-between gap-2">
+          <div>
+            <h3 class="text-lg font-semibold text-[var(--text)]">
+              {{ selectedServer?.serverName }}
+            </h3>
+            <p class="text-xs text-[var(--text-muted)]">
+              Agentes que referencian este MCP
+            </p>
+          </div>
+          <button type="button" class="ui-btn-secondary" @click="closeDetail">Cerrar</button>
+        </div>
+        <div v-if="detailLoading" class="py-8 text-center text-sm text-[var(--text-muted)]">
+          Cargando…
+        </div>
+        <div
+          v-else-if="!(selectedServer?.agents || []).length"
+          class="py-8 text-center text-sm text-[var(--text-muted)]"
+        >
+          Ningún agente usa este MCP
+        </div>
+        <div v-else class="max-h-[50vh] space-y-2 overflow-y-auto">
+          <div
+            v-for="agent in selectedServer.agents"
+            :key="agent._id || agent.id"
+            class="rounded-lg border px-3 py-2 text-sm"
+            style="border-color: var(--border)"
+          >
+            <p class="text-[var(--text)]">{{ agent.name || agent.id }}</p>
+            <p class="text-xs text-[var(--text-muted)]">
+              {{ agent.provider }} · {{ agent.model }} · {{ agent.authorName || agent.author || '—' }}
+            </p>
           </div>
         </div>
-        <div class="card-body">
-          <p v-if="server.config?.description" class="server-description">
-            {{ server.config.description }}
-          </p>
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="label">Tipo:</span>
-              <span class="value badge">{{ server.config?.type || 'unknown' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">Tools:</span>
-              <span class="value">{{ server.config?.tools || '0 tools' }}</span>
-            </div>
-          </div>
-          <div class="info-item full-width">
-            <span class="label">URL:</span>
-            <span class="value url-text">{{ server.config?.url || '-' }}</span>
-          </div>
-          <div class="card-footer">
-            <span class="label">Creado:</span>
-            <span class="value">{{ formatDate(server.createdAt) }}</span>
-          </div>
-        </div>
       </div>
     </div>
 
-    <div v-if="!loading && !filteredServers.length" class="empty-state">
-      <p>No hay MCP Servers configurados</p>
-    </div>
-
-    <!-- Create/Edit Modal -->
-    <div v-if="showCreateForm" class="modal-overlay" @click="closeForm">
-      <div class="modal" @click.stop>
-        <div class="modal-header">
-          <h3>{{ editingServer ? 'Editar MCP Server' : 'Nuevo MCP Server' }}</h3>
-          <div class="mode-toggle">
-            <button :class="['mode-btn', { active: mode === 'form' }]" @click="setMode('form')">
+    <div v-if="showCreateForm" class="ui-modal-overlay" @click="closeForm">
+      <div class="ui-modal max-w-3xl" @click.stop>
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <h3 class="text-lg font-semibold text-[var(--text)]">
+            {{ editingServer ? 'Editar MCP Server' : 'Nuevo MCP Server' }}
+          </h3>
+          <div class="inline-flex rounded-lg border p-1" style="border-color: var(--border)">
+            <button
+              type="button"
+              class="rounded-md px-3 py-1 text-xs"
+              :class="
+                mode === 'form'
+                  ? 'bg-[var(--surface-hover)] text-[var(--text)]'
+                  : 'text-[var(--text-muted)]'
+              "
+              @click="setMode('form')"
+            >
               Formulario
             </button>
-            <button :class="['mode-btn', { active: mode === 'yaml' }]" @click="setMode('yaml')">
-              YAML (Raw)
+            <button
+              type="button"
+              class="rounded-md px-3 py-1 text-xs"
+              :class="
+                mode === 'yaml'
+                  ? 'bg-[var(--surface-hover)] text-[var(--text)]'
+                  : 'text-[var(--text-muted)]'
+              "
+              @click="setMode('yaml')"
+            >
+              YAML
             </button>
           </div>
         </div>
 
-        <form @submit.prevent="saveServer">
-          <!-- FORM MODE -->
-          <div v-if="mode === 'form'">
-            <div class="form-row">
-              <div class="form-group flex-2">
-                <label>Nombre del Servidor</label>
-                <input
-                  v-model="formData.serverName"
-                  type="text"
-                  placeholder="ej. mi-servidor"
-                  required
-                />
+        <form class="space-y-3" @submit.prevent="saveServer">
+          <template v-if="mode === 'form'">
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div class="md:col-span-2">
+                <label class="ui-label">Nombre</label>
+                <input v-model="formData.serverName" class="ui-input" required />
               </div>
-              <div class="form-group flex-1">
-                <label>Tipo</label>
-                <select v-model="formData.type">
+              <div>
+                <label class="ui-label">Tipo</label>
+                <select v-model="formData.type" class="ui-input">
                   <option value="streamable-http">Streamable HTTP</option>
                   <option value="websocket">WebSocket</option>
                   <option value="sse">SSE</option>
                 </select>
               </div>
             </div>
-
-            <div class="form-group">
-              <label>Descripción</label>
-              <textarea
-                v-model="formData.description"
-                rows="2"
-                placeholder="ej. Servidor para consulta de base de datos de producción"
-              ></textarea>
+            <div>
+              <label class="ui-label">Descripción</label>
+              <textarea v-model="formData.description" class="ui-input" rows="2" />
             </div>
-
-            <div class="form-group">
-              <label>URL</label>
-              <input v-model="formData.url" type="url" placeholder="https://..." required />
+            <div>
+              <label class="ui-label">URL</label>
+              <input v-model="formData.url" class="ui-input" type="url" required />
             </div>
-
-            <div class="form-row">
-              <div class="form-group flex-1">
-                <label>Headers (JSON)</label>
-                <textarea
-                  v-model="formData.headersJSON"
-                  class="code-input small"
-                  placeholder='{"Authorization": "Bearer {{TOKEN}}"}'
-                ></textarea>
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div>
+                <label class="ui-label">Headers (JSON)</label>
+                <textarea v-model="formData.headersJSON" class="ui-input font-mono text-xs" rows="4" />
               </div>
-              <div class="form-group flex-1">
-                <label>User Vars (JSON)</label>
+              <div>
+                <label class="ui-label">User Vars (JSON)</label>
                 <textarea
                   v-model="formData.customUserVarsJSON"
-                  class="code-input small"
-                  placeholder='{"KEY": {"title": "Mi Key", "description": "..."}}'
-                ></textarea>
+                  class="ui-input font-mono text-xs"
+                  rows="4"
+                />
               </div>
             </div>
-
-            <div class="form-group">
-              <label>Capabilities (JSON)</label>
-              <textarea v-model="formData.capabilitiesJSON" class="code-input small"></textarea>
+            <div>
+              <label class="ui-label">Capabilities (JSON)</label>
+              <textarea
+                v-model="formData.capabilitiesJSON"
+                class="ui-input font-mono text-xs"
+                rows="3"
+              />
             </div>
-          </div>
-
-          <!-- YAML MODE -->
-          <div v-else class="yaml-editor-container">
-            <div class="form-group">
-              <label>Configuración YAML</label>
+          </template>
+          <template v-else>
+            <div>
+              <label class="ui-label">Configuración YAML</label>
               <textarea
                 v-model="formData.yamlContent"
-                class="code-input yaml-input"
-                placeholder="serverName: mi-servidor&#10;type: sse&#10;url: http://...&#10;headers:&#10;  X-User: '{{LIBRECHAT_USER_ID}}'"
-              ></textarea>
-              <small class="help-text">Define el servidor usando formato YAML estándar.</small>
+                class="ui-input min-h-[240px] font-mono text-xs"
+              />
             </div>
-          </div>
+          </template>
 
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary">
+          <div class="flex flex-col-reverse justify-end gap-2 pt-2 sm:flex-row">
+            <button type="button" class="ui-btn-secondary" @click="closeForm">Cancelar</button>
+            <button type="submit" class="ui-btn-primary">
               {{ editingServer ? 'Actualizar' : 'Crear' }}
             </button>
-            <button type="button" class="btn btn-secondary" @click="closeForm">Cancelar</button>
           </div>
         </form>
       </div>
@@ -160,16 +242,33 @@
 <script setup>
 import { onMounted } from 'vue';
 import { useMcpServers } from '../composables/useMcpServers';
+import { formatDate } from '../utils/password';
+import UiCard from '../components/ui/UiCard.vue';
+import PaginationBar from '../components/ui/PaginationBar.vue';
+import CardSkeleton from '../components/ui/CardSkeleton.vue';
 
 const {
-  filteredServers,
+  servers,
   searchQuery,
   loading,
+  detailLoading,
   showCreateForm,
+  showDetail,
+  selectedServer,
   editingServer,
   mode,
   formData,
+  page,
+  pageSize,
+  total,
+  totalPages,
+  rangeLabel,
+  nextPage,
+  prevPage,
+  setPageSize,
   loadServers,
+  openDetail,
+  closeDetail,
   setMode,
   editServer,
   saveServer,
@@ -182,329 +281,3 @@ onMounted(() => {
   loadServers();
 });
 </script>
-
-<style scoped>
-.mcp-container {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.header-actions {
-  display: flex;
-  gap: 15px;
-  align-items: center;
-}
-
-.search-box {
-  flex: 1;
-  max-width: 300px;
-}
-
-.search-box input {
-  width: 100%;
-  padding: 10px 15px;
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 6px;
-  color: #f1f5f9;
-  font-size: 14px;
-}
-
-.btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.btn-primary {
-  background: #3b82f6;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #2563eb;
-}
-
-.servers-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 20px;
-}
-
-.server-card {
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 12px;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-
-.server-card:hover {
-  border-color: #3b82f6;
-  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.1);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px;
-  background: #0f172a;
-  border-bottom: 1px solid #334155;
-}
-
-.card-header h4 {
-  margin: 0;
-  color: #f1f5f9;
-  font-size: 16px;
-}
-
-.card-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.card-body {
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.server-description {
-  margin: 0;
-  font-size: 13px;
-  color: #94a3b8;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.info-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-}
-
-.info-item.full-width {
-  grid-column: span 2;
-}
-
-.info-item .label {
-  color: #64748b;
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: 10px;
-  letter-spacing: 0.05em;
-}
-
-.info-item .value {
-  color: #f1f5f9;
-  word-break: break-all;
-}
-
-.value.badge {
-  background: #334155;
-  padding: 2px 8px;
-  border-radius: 4px;
-  width: fit-content;
-  font-family: monospace;
-  font-size: 11px;
-}
-
-.value.url-text {
-  font-family: monospace;
-  background: #0f172a;
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid #1e293b;
-}
-
-.card-footer {
-  margin-top: 8px;
-  padding-top: 12px;
-  border-top: 1px solid #334155;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.card-footer .label {
-  color: #475569;
-  font-size: 11px;
-}
-
-.card-footer .value {
-  color: #64748b;
-  font-size: 11px;
-}
-
-.btn-icon {
-  background: none;
-  border: none;
-  font-size: 16px;
-  cursor: pointer;
-  padding: 5px 10px;
-  border-radius: 4px;
-  transition: background 0.3s ease;
-}
-
-.btn-icon:hover {
-  background: #475569;
-}
-
-.btn-icon.danger:hover {
-  background: #f87171;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 12px;
-  padding: 25px;
-  max-width: 800px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.modal h3 {
-  color: #f1f5f9;
-  margin: 0;
-}
-
-.mode-toggle {
-  display: flex;
-  background: #0f172a;
-  padding: 4px;
-  border-radius: 6px;
-  border: 1px solid #334155;
-}
-
-.mode-btn {
-  padding: 6px 12px;
-  border: none;
-  background: none;
-  color: #64748b;
-  font-size: 12px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.mode-btn.active {
-  background: #3b82f6;
-  color: white;
-}
-
-.form-row {
-  display: flex;
-  gap: 15px;
-}
-
-.flex-1 {
-  flex: 1;
-}
-.flex-2 {
-  flex: 2;
-}
-
-.form-group {
-  margin-bottom: 15px;
-}
-
-.form-group label {
-  display: block;
-  color: #cbd5e1;
-  margin-bottom: 5px;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-  width: 100%;
-  padding: 10px;
-  background: #0f172a;
-  border: 1px solid #334155;
-  border-radius: 6px;
-  color: #f1f5f9;
-  font-size: 13px;
-}
-
-.code-input {
-  font-family: 'Courier New', monospace;
-}
-
-.code-input.small {
-  min-height: 60px;
-}
-
-.yaml-input {
-  min-height: 300px;
-}
-
-.help-text {
-  display: block;
-  margin-top: 5px;
-  color: #64748b;
-  font-size: 11px;
-}
-
-.form-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 25px;
-}
-
-.form-actions button {
-  flex: 1;
-  padding: 12px;
-}
-
-.btn-secondary {
-  background: #475569;
-  color: #f1f5f9;
-}
-
-.loading,
-.empty-state {
-  text-align: center;
-  padding: 40px;
-  color: #cbd5e1;
-}
-</style>

@@ -11,8 +11,27 @@ function mcpWrite() {
   return getWriteDB().collection(COLLECTION);
 }
 
-async function list({ limit = 50 } = {}) {
-  return mcpRead().find({}).limit(limit).sort({ createdAt: -1 }).toArray();
+async function list({ limit = 10, skip = 0, search = '' } = {}) {
+  const filter = {};
+  if (search) {
+    filter.serverName = { $regex: search, $options: 'i' };
+  }
+
+  const [documents, total] = await Promise.all([
+    mcpRead().find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
+    mcpRead().countDocuments(filter),
+  ]);
+
+  return { documents, total };
+}
+
+async function findById(id) {
+  if (!ObjectId.isValid(id)) return null;
+  return mcpRead().findOne({ _id: new ObjectId(id) });
+}
+
+async function findByServerName(serverName) {
+  return mcpRead().findOne({ serverName });
 }
 
 async function create(doc) {
@@ -39,6 +58,8 @@ async function countAll() {
 
 module.exports = {
   list,
+  findById,
+  findByServerName,
   create,
   updateById,
   deleteById,

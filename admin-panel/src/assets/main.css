@@ -1,0 +1,156 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Visual references (dark, ChatGPT / LibreChat adjacent):
+  - ChatGPT dark charcoal: canvas #212121, sidebar #171717, raised #2F2F2F
+  - OpenAI tokens: text #ECECEC / #B4B4B4, border white@10%, accent #10A37F
+  Keep slate base, soften toward charcoal + emerald accent.
+*/
+
+@layer base {
+  :root {
+    --app-bg: #212121;
+    --sidebar-bg: #171717;
+    --surface: #2f2f2f;
+    --surface-hover: #3a3a3a;
+    --border: rgba(255, 255, 255, 0.1);
+    --text: #ececec;
+    --text-muted: #b4b4b4;
+    --accent: #10a37f;
+    --accent-hover: #0d8f70;
+    --sidebar-width: 260px;
+    --sidebar-width-collapsed: 72px;
+  }
+
+  body {
+    @apply antialiased;
+    background: var(--app-bg);
+    color: var(--text);
+    font-family:
+      Inter,
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      Roboto,
+      sans-serif;
+  }
+}
+
+@layer components {
+  .ui-card {
+    @apply relative rounded-2xl border bg-[var(--surface)] transition-all duration-300;
+    border-color: var(--border);
+    box-shadow: 0 0 0 0 transparent;
+  }
+
+  /* Halo / brillo alrededor del contorno al hover (fuera de la card) */
+  .ui-card:hover {
+    border-color: rgba(16, 163, 127, 0.5);
+    background: var(--surface-hover);
+    box-shadow:
+      0 0 0 1px rgba(16, 163, 127, 0.28),
+      0 0 22px rgba(16, 163, 127, 0.28),
+      0 0 48px rgba(16, 163, 127, 0.14),
+      0 8px 28px rgba(0, 0, 0, 0.35);
+  }
+
+  .ui-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition;
+  }
+
+  .ui-btn-primary {
+    @apply ui-btn text-white;
+    background: var(--accent);
+  }
+
+  .ui-btn-primary:hover {
+    background: var(--accent-hover);
+  }
+
+  .ui-btn-secondary {
+    @apply ui-btn border text-[var(--text)];
+    border-color: var(--border);
+    background: transparent;
+  }
+
+  .ui-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .ui-btn-secondary:disabled,
+  .ui-btn-primary:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+
+  .ui-btn-ghost {
+    @apply ui-btn text-[var(--text-muted)];
+  }
+
+  .ui-btn-ghost:hover {
+    @apply text-[var(--text)];
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .ui-input {
+    @apply w-full rounded-lg border bg-transparent px-3 py-2 text-sm outline-none transition;
+    border-color: var(--border);
+    color: var(--text);
+  }
+
+  .ui-input:focus {
+    border-color: rgba(16, 163, 127, 0.55);
+    box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.15);
+  }
+
+  .ui-label {
+    @apply mb-1.5 block text-xs font-medium;
+    color: var(--text-muted);
+  }
+
+  .ui-modal-overlay {
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-4;
+  }
+
+  .ui-modal {
+    @apply relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border p-4 sm:p-5;
+    border-color: var(--border);
+    background: var(--surface);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  }
+
+  .ui-modal:hover {
+    border-color: var(--border);
+    background: var(--surface);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  }
+
+  .app-main {
+    width: 100%;
+  }
+
+  @media (min-width: 768px) {
+    .app-main {
+      margin-left: var(--sidebar-current-width, var(--sidebar-width));
+      width: calc(100% - var(--sidebar-current-width, var(--sidebar-width)));
+    }
+  }
+
+  .ui-skeleton-line {
+    @apply animate-pulse rounded-md bg-white/10;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}

@@ -1,132 +1,146 @@
 <template>
-  <div class="dashboard">
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-value">{{ stats.users }}</div>
-        <div class="stat-label">Usuarios</div>
+  <div class="space-y-6 tracking-tight">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p class="text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
+          Overview
+        </p>
+        <h1 class="mt-1 text-xl font-semibold text-[var(--text)] sm:text-2xl">Dashboard</h1>
+        <p class="mt-1 text-sm text-[var(--text-muted)]">
+          Resumen operativo ·
+          {{ usingMock ? 'datos mock' : 'datos en vivo (/api/stats)' }}
+        </p>
       </div>
-      <div class="stat-card">
-        <div class="stat-value">{{ stats.mcpServers }}</div>
-        <div class="stat-label">MCP Servers</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value">{{ stats.roles }}</div>
-        <div class="stat-label">Roles</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value">{{ stats.collections }}</div>
-        <div class="stat-label">Colecciones</div>
-      </div>
+      <button
+        type="button"
+        class="ui-btn-secondary w-full sm:w-auto"
+        :disabled="loading"
+        @click="loadStats"
+      >
+        Actualizar
+      </button>
     </div>
 
-    <div class="recent-section">
-      <h3>Información del Sistema</h3>
-      <div class="info-grid">
-        <div class="info-box">
-          <h4>MongoDB</h4>
-          <p>Conectado ✅</p>
-        </div>
-        <div class="info-box">
-          <h4>API REST</h4>
-          <p>Corriendo en puerto 8082</p>
-        </div>
-        <div class="info-box">
-          <h4>Admin Panel</h4>
-          <p>Versión 1.0.0</p>
-        </div>
-      </div>
+    <div v-if="loading" class="space-y-4">
+      <CardSkeleton :count="4" :cols="4" />
+      <CardSkeleton :count="2" :cols="3" :lines="5" />
     </div>
+    <UiCard
+      v-else-if="error"
+      class-name="border-red-900/40 py-8 text-center text-sm text-red-300"
+    >
+      {{ error }}
+    </UiCard>
+
+    <template v-else>
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <UiCard v-for="card in kpiCards" :key="card.label">
+          <div class="flex items-start justify-between gap-2">
+            <p class="text-xs font-medium text-[var(--text-muted)]">{{ card.label }}</p>
+            <span aria-hidden="true">{{ card.icon }}</span>
+          </div>
+          <p class="mt-3 text-2xl font-semibold tabular-nums text-[var(--text)]">
+            {{ card.value }}
+          </p>
+          <p class="mt-1 text-xs text-[var(--text-muted)]">{{ card.sub }}</p>
+        </UiCard>
+      </div>
+
+      <div class="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <UiCard class-name="lg:col-span-2">
+          <h2 class="mb-3 text-sm font-medium text-[var(--text)]">Resumen de plataforma</h2>
+          <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div
+              v-for="row in platformRows"
+              :key="row.label"
+              class="rounded-xl border p-3"
+              style="border-color: var(--border); background: rgba(0, 0, 0, 0.2)"
+            >
+              <dt class="text-xs text-[var(--text-muted)]">{{ row.label }}</dt>
+              <dd class="mt-1 text-lg font-semibold tabular-nums text-[var(--text)]">
+                {{ row.value }}
+              </dd>
+            </div>
+          </dl>
+        </UiCard>
+
+        <UiCard>
+          <h2 class="mb-3 text-sm font-medium text-[var(--text)]">Estado del sistema</h2>
+          <ul class="space-y-2 text-sm">
+            <li
+              class="flex items-center justify-between rounded-lg border px-3 py-2"
+              style="border-color: var(--border)"
+            >
+              <span class="text-[var(--text-muted)]">MongoDB</span>
+              <span style="color: var(--accent)">Conectado</span>
+            </li>
+            <li
+              class="flex items-center justify-between rounded-lg border px-3 py-2"
+              style="border-color: var(--border)"
+            >
+              <span class="text-[var(--text-muted)]">API REST</span>
+              <span class="text-[var(--text)]">:8082</span>
+            </li>
+            <li
+              class="flex items-center justify-between rounded-lg border px-3 py-2"
+              style="border-color: var(--border)"
+            >
+              <span class="text-[var(--text-muted)]">Admin Panel</span>
+              <span class="text-[var(--text)]">v1.0.0</span>
+            </li>
+          </ul>
+        </UiCard>
+      </div>
+    </template>
   </div>
 </template>
 
-<script setup>
-import { onMounted } from 'vue';
-import { useDashboard } from '../composables/useStats';
+<script setup lang="ts">
+import { computed } from 'vue';
+import { useDashboardStats } from '@/composables/useAdminStats';
+import UiCard from '@/components/ui/UiCard.vue';
+import CardSkeleton from '@/components/ui/CardSkeleton.vue';
 
-const { stats, loadStats } = useDashboard();
+const { loading, error, totals, usingMock, loadStats } = useDashboardStats();
 
-onMounted(() => {
-  loadStats();
-});
+function fmt(n: number): string {
+  return (n ?? 0).toLocaleString('es-MX');
+}
+
+const kpiCards = computed(() => [
+  {
+    icon: '👥',
+    label: 'Usuarios',
+    value: fmt(totals.value.totalUsers),
+    sub: 'Colección users',
+  },
+  {
+    icon: '🔌',
+    label: 'MCP Servers',
+    value: fmt(totals.value.totalMCPServers),
+    sub: 'Colección mcpservers',
+  },
+  {
+    icon: '🔐',
+    label: 'Roles',
+    value: fmt(totals.value.totalRoles),
+    sub: 'Colección roles',
+  },
+  {
+    icon: '🗂️',
+    label: 'Conversaciones',
+    value: fmt(totals.value.totalConversations),
+    sub: 'Antes “Colecciones”',
+  },
+]);
+
+const platformRows = computed(() => [
+  { label: 'Mensajes totales', value: fmt(totals.value.totalMessages) },
+  { label: 'Agentes', value: fmt(totals.value.totalAgents) },
+  { label: 'Archivos', value: fmt(totals.value.totalFiles) },
+  {
+    label: 'MCP + Roles',
+    value: fmt(totals.value.totalMCPServers + totals.value.totalRoles),
+  },
+]);
 </script>
-
-<style scoped>
-.dashboard {
-  display: flex;
-  flex-direction: column;
-  gap: 30px;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-}
-
-.stat-card {
-  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-  border: 1px solid #475569;
-  border-radius: 12px;
-  padding: 25px;
-  text-align: center;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.1);
-}
-
-.stat-value {
-  font-size: 32px;
-  font-weight: bold;
-  color: #60a5fa;
-  margin-bottom: 10px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: #cbd5e1;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.recent-section {
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 12px;
-  padding: 25px;
-}
-
-.recent-section h3 {
-  margin-top: 0;
-  color: #f1f5f9;
-  margin-bottom: 20px;
-}
-
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-}
-
-.info-box {
-  background: #0f172a;
-  border: 1px solid #334155;
-  border-radius: 8px;
-  padding: 15px;
-}
-
-.info-box h4 {
-  color: #60a5fa;
-  margin: 0 0 10px 0;
-  font-size: 14px;
-  text-transform: uppercase;
-}
-
-.info-box p {
-  color: #cbd5e1;
-  margin: 0;
-  font-size: 14px;
-}
-</style>

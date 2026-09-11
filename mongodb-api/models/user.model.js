@@ -22,13 +22,37 @@ async function findById(id) {
   return usersRead().findOne({ _id: new ObjectId(id) });
 }
 
-async function list({ limit = 50 } = {}) {
-  return usersRead()
-    .find({})
+async function list({ limit = 10, skip = 0, search = '', role = '' } = {}) {
+  const filter = {};
+  if (search) {
+    const regex = { $regex: search, $options: 'i' };
+    filter.$or = [{ email: regex }, { name: regex }, { username: regex }];
+  }
+  if (role) {
+    filter.role = role;
+  }
+
+  const cursor = usersRead()
+    .find(filter)
     .project({ password: 0 })
-    .limit(limit)
     .sort({ createdAt: -1 })
-    .toArray();
+    .skip(skip)
+    .limit(limit);
+
+  const [documents, total] = await Promise.all([
+    cursor.toArray(),
+    usersRead().countDocuments(filter),
+  ]);
+
+  return { documents, total };
+}
+
+async function countByRole(roleName) {
+  return usersRead().countDocuments({ role: roleName });
+}
+
+async function listByRole(roleName, { limit = 10, skip = 0, search = '' } = {}) {
+  return list({ limit, skip, search, role: roleName });
 }
 
 async function create(doc) {
@@ -61,6 +85,8 @@ module.exports = {
   findByEmail,
   findById,
   list,
+  listByRole,
+  countByRole,
   create,
   updateById,
   deleteById,

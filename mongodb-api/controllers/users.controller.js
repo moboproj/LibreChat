@@ -2,6 +2,11 @@ const { ObjectId } = require('mongodb');
 const bcrypt = require('bcryptjs');
 const User = require('../models/user.model');
 const Role = require('../models/role.model');
+const Transaction = require('../models/transaction.model');
+const { enrichUsers, countsForUser } = require('../services/userEnrichment');
+const { parsePagination, paginatedResponse } = require('../utils/pagination');
+const { resolveSince, normalizeRange } = require('../utils/range');
+const { sendError, fromException } = require('../utils/httpError');
 
 async function resolveRoleName(role, fallback = 'USER') {
   const name = typeof role === 'string' ? role.trim() : '';
@@ -20,13 +25,70 @@ async function resolveRoleName(role, fallback = 'USER') {
   return found.name;
 }
 
+function publicUser(doc) {
+  if (!doc) return null;
+  const { password: _password, ...rest } = doc;
+  return rest;
+}
+
 const getUsers = async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit, 10) || 50;
-    const documents = await User.list({ limit });
-    return res.json({ documents });
+    const { page, limit, skip, search } = parsePagination(req.query);
+    const role = typeof req.query.role === 'string' ? req.query.role.trim() : '';
+    const { documents, total } = await User.list({ limit, skip, search, role });
+    const enriched = await enrichUsers(documents);
+    return res.json(paginatedResponse({ documents: enriched, total, page, limit }));
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return fromException(res, error);
+  }
+};
+
+const getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) {
+      return sendError(res, 400, 'Invalid User ID format');
+    }
+    const user = await User.findById(id);
+    if (!user) return sendError(res, 404, 'User not found');
+    const [enriched] = await enrichUsers([publicUser(user)]);
+    return res.json({ document: enriched });
+  } catch (error) {
+    return fromException(res, error);
+  }
+};
+
+const getUserUsage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) {
+      return sendError(res, 400, 'Invalid User ID format');
+    }
+    const user = await User.findById(id);
+    if (!user) return sendError(res, 404, 'User not found');
+
+    const range = normalizeRange(req.query.range);
+    const since = resolveSince(range);
+    const [counts, usage] = await Promise.all([
+      countsForUser(id),
+      Transaction.usageForUser(id, { since }),
+    ]);
+
+    return res.json({
+      user: {
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        provider: user.provider,
+      },
+      range,
+      since,
+      counts,
+      usage,
+    });
+  } catch (error) {
+    return fromException(res, error);
   }
 };
 
@@ -35,7 +97,12 @@ const createUser = async (req, res) => {
     const { email, password, name, role } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+      return sendError(res, 400, 'Email and password are required');
+    }
+
+    const existing = await User.findByEmail(email);
+    if (existing) {
+      return sendError(res, 409, 'Ya existe un usuario con ese email');
     }
 
     const resolvedRole = await resolveRoleName(role);
@@ -52,7 +119,7 @@ const createUser = async (req, res) => {
 
     return res.status(201).json({ _id: result.insertedId });
   } catch (error) {
-    return res.status(error.status || 500).json({ error: error.message });
+    return fromException(res, error);
   }
 };
 
@@ -62,7 +129,7 @@ const updateUser = async (req, res) => {
     const { email, name, role } = req.body;
 
     if (!ObjectId.isValid(id)) {
-      return res.status(400).json({ error: 'Invalid User ID format' });
+      return sendError(res, 400, 'Invalid User ID format');
     }
 
     const updates = {
@@ -78,12 +145,12 @@ const updateUser = async (req, res) => {
     const result = await User.updateById(id, updates);
 
     if (result.matchedCount === 0) {
-      return res.status(404).json({ error: 'User not found' });
+      return sendError(res, 404, 'User not found');
     }
 
     return res.json({ message: 'User updated' });
   } catch (error) {
-    return res.status(error.status || 500).json({ error: error.message });
+    return fromException(res, error);
   }
 };
 
@@ -93,7 +160,7 @@ const updateUserPassword = async (req, res) => {
     const { password } = req.body;
 
     if (!ObjectId.isValid(id) || !password) {
-      return res.status(400).json({ error: 'Invalid ID or missing password' });
+      return sendError(res, 400, 'Invalid ID or missing password');
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -105,12 +172,12 @@ const updateUserPassword = async (req, res) => {
     });
 
     if (result.matchedCount === 0) {
-      return res.status(404).json({ error: 'User not found' });
+      return sendError(res, 404, 'User not found');
     }
 
     return res.json({ message: 'Password updated' });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return fromException(res, error);
   }
 };
 
@@ -119,23 +186,25 @@ const deleteUser = async (req, res) => {
     const { id } = req.params;
 
     if (!ObjectId.isValid(id)) {
-      return res.status(400).json({ error: 'Invalid User ID format' });
+      return sendError(res, 400, 'Invalid User ID format');
     }
 
     const result = await User.deleteById(id);
 
     if (result.deletedCount === 0) {
-      return res.status(404).json({ error: 'User not found' });
+      return sendError(res, 404, 'User not found');
     }
 
     return res.json({ message: 'User deleted' });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return fromException(res, error);
   }
 };
 
 module.exports = {
   getUsers,
+  getUserById,
+  getUserUsage,
   createUser,
   updateUser,
   updateUserPassword,

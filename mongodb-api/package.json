@@ -5,7 +5,14 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "seed": "node scripts/seed.js",
+    "seed:reset": "node scripts/seed.js --reset",
+    "seed:sanitize": "node scripts/seed.js --reset --sanitize",
+    "test": "node --test --test-concurrency=1 scripts/test-pagination.js tests/**/*.test.js",
+    "test:unit": "node scripts/test-pagination.js",
+    "test:crud": "node --test --test-concurrency=1 tests/**/*.test.js",
+    "smoke": "node scripts/smoke.js"
   },
   "keywords": [
     "mongodb",

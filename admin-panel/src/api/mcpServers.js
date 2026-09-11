@@ -1,7 +1,13 @@
 import http from './http';
 
-export function listMcpServers(limit = 100) {
-  return http.get('/api/mcpservers', { params: { limit } });
+export function listMcpServers({ page = 1, limit = 10, search = '' } = {}) {
+  return http.get('/api/mcpservers', {
+    params: { page, limit, search: search || undefined },
+  });
+}
+
+export function getMcpServer(id) {
+  return http.get(`/api/mcpservers/${encodeURIComponent(id)}`);
 }
 
 export function createMcpServer(payload) {

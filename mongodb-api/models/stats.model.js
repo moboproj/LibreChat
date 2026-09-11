@@ -54,56 +54,70 @@ async function activeUsersByDay(since) {
     .toArray();
 }
 
-async function messagesByModel() {
-  return getReadDB()
-    .collection('messages')
-    .aggregate([
-      { $group: { _id: '$model', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 10 },
-    ])
-    .toArray();
+async function messagesByModel(since) {
+  const pipeline = [];
+  if (since) {
+    pipeline.push({ $match: { createdAt: { $gte: since } } });
+  }
+  pipeline.push(
+    { $group: { _id: '$model', count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+    { $limit: 10 },
+  );
+  return getReadDB().collection('messages').aggregate(pipeline).toArray();
 }
 
-async function messagesByEndpoint() {
-  return getReadDB()
-    .collection('messages')
-    .aggregate([{ $group: { _id: '$endpoint', count: { $sum: 1 } } }, { $sort: { count: -1 } }])
-    .toArray();
+async function messagesByEndpoint(since) {
+  const pipeline = [];
+  if (since) {
+    pipeline.push({ $match: { createdAt: { $gte: since } } });
+  }
+  pipeline.push(
+    { $group: { _id: '$endpoint', count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+    { $limit: 20 },
+  );
+  return getReadDB().collection('messages').aggregate(pipeline).toArray();
 }
 
-async function tokensByType() {
-  return getReadDB()
-    .collection('transactions')
-    .aggregate([{ $group: { _id: '$tokenType', total: { $sum: { $abs: '$rawAmount' } } } }])
-    .toArray();
+async function tokensByType(since) {
+  const pipeline = [];
+  if (since) {
+    pipeline.push({ $match: { createdAt: { $gte: since } } });
+  }
+  pipeline.push({
+    $group: { _id: '$tokenType', total: { $sum: { $abs: '$rawAmount' } } },
+  });
+  return getReadDB().collection('transactions').aggregate(pipeline).toArray();
 }
 
-async function topUsersByTokens() {
-  return getReadDB()
-    .collection('transactions')
-    .aggregate([
-      { $group: { _id: '$user', totalTokens: { $sum: { $abs: '$rawAmount' } } } },
-      { $sort: { totalTokens: -1 } },
-      { $limit: 10 },
-      {
-        $lookup: {
-          from: 'users',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'userInfo',
-        },
+async function topUsersByTokens(since) {
+  const pipeline = [];
+  if (since) {
+    pipeline.push({ $match: { createdAt: { $gte: since } } });
+  }
+  pipeline.push(
+    { $group: { _id: '$user', totalTokens: { $sum: { $abs: '$rawAmount' } } } },
+    { $sort: { totalTokens: -1 } },
+    { $limit: 10 },
+    {
+      $lookup: {
+        from: 'users',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'userInfo',
       },
-      {
-        $project: {
-          _id: 1,
-          totalTokens: 1,
-          name: { $arrayElemAt: ['$userInfo.name', 0] },
-          email: { $arrayElemAt: ['$userInfo.email', 0] },
-        },
+    },
+    {
+      $project: {
+        _id: 1,
+        totalTokens: 1,
+        name: { $arrayElemAt: ['$userInfo.name', 0] },
+        email: { $arrayElemAt: ['$userInfo.email', 0] },
       },
-    ])
-    .toArray();
+    },
+  );
+  return getReadDB().collection('transactions').aggregate(pipeline).toArray();
 }
 
 module.exports = {

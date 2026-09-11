@@ -1,5 +1,6 @@
 const { MongoClient } = require('mongodb');
 const config = require('./env');
+const { ensureIndexes } = require('../utils/indexes');
 
 let writeClient = null;
 let _readClient = null;
@@ -39,6 +40,8 @@ async function connectDB() {
     readDb = read.db;
   }
 
+  await ensureIndexes(writeDb);
+
   const same = config.mongoReadUri === config.mongoPrimaryUri;
   console.log(
     `Connected to MongoDB primary=${dbNameFromUri(config.mongoPrimaryUri)}` +
@@ -46,6 +49,19 @@ async function connectDB() {
   );
 
   return { writeDb, readDb };
+}
+
+async function closeDB() {
+  const clients = new Set();
+  if (writeClient) clients.add(writeClient);
+  if (_readClient) clients.add(_readClient);
+  for (const client of clients) {
+    await client.close().catch(() => {});
+  }
+  writeClient = null;
+  _readClient = null;
+  writeDb = null;
+  readDb = null;
 }
 
 function getWriteDB() {
@@ -69,6 +85,7 @@ function getDB() {
 
 module.exports = {
   connectDB,
+  closeDB,
   getWriteDB,
   getReadDB,
   getDB,
