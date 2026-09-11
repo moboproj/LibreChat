@@ -22,7 +22,7 @@
             <button
               v-if="!isProtectedRole(role.name)"
               class="btn-icon danger"
-              @click="deleteRole(role._id)"
+              @click="removeRole(role._id)"
               title="Eliminar"
             >
               🗑️
@@ -99,159 +99,32 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'Roles',
-  data() {
-    return {
-      roles: [],
-      loading: false,
-      creatingStore: false,
-      showCreateForm: false,
-      editingRole: null,
-      permissionMap: {
-        BOOKMARKS: ['USE'],
-        PROMPTS: ['USE', 'CREATE', 'SHARE', 'SHARE_PUBLIC'],
-        MEMORIES: ['USE', 'CREATE', 'UPDATE', 'READ', 'OPT_OUT'],
-        AGENTS: ['USE', 'CREATE', 'SHARE', 'SHARE_PUBLIC'],
-        MULTI_CONVO: ['USE'],
-        TEMPORARY_CHAT: ['USE'],
-        RUN_CODE: ['USE'],
-        WEB_SEARCH: ['USE'],
-        PEOPLE_PICKER: ['VIEW_USERS', 'VIEW_GROUPS', 'VIEW_ROLES'],
-        MARKETPLACE: ['USE'],
-        FILE_SEARCH: ['USE'],
-        FILE_CITATIONS: ['USE'],
-        MCP_SERVERS: ['USE', 'CREATE', 'SHARE', 'SHARE_PUBLIC'],
-        REMOTE_AGENTS: ['USE', 'CREATE', 'SHARE', 'SHARE_PUBLIC'],
-      },
-      formData: {
-        name: '',
-        permissions: this.getDefaultPermissions(),
-      },
-    };
-  },
-  mounted() {
-    this.loadRoles();
-  },
-  computed: {
-    hasStoreRole() {
-      return this.roles.some((role) => role.name === 'STORE');
-    },
-  },
-  methods: {
-    isProtectedRole(name) {
-      return name === 'ADMIN' || name === 'USER' || name === 'STORE';
-    },
-    openCreateForm() {
-      this.editingRole = null;
-      this.formData = {
-        name: '',
-        permissions: this.getDefaultPermissions(),
-      };
-      this.showCreateForm = true;
-    },
-    async createStoreRole() {
-      this.creatingStore = true;
-      try {
-        await this.$axios.post('/api/roles', { name: 'STORE' });
-        await this.loadRoles();
-      } catch (error) {
-        const message = error.response?.data?.error || error.message;
-        alert('No se pudo crear STORE: ' + message);
-      } finally {
-        this.creatingStore = false;
-      }
-    },
-    getDefaultPermissions() {
-      const perms = {};
-      const structure = {
-        BOOKMARKS: { USE: true },
-        PROMPTS: { USE: true, CREATE: true, SHARE: false, SHARE_PUBLIC: false },
-        MEMORIES: { USE: true, CREATE: true, UPDATE: true, READ: true, OPT_OUT: true },
-        AGENTS: { USE: true, CREATE: true, SHARE: false, SHARE_PUBLIC: false },
-        MULTI_CONVO: { USE: true },
-        TEMPORARY_CHAT: { USE: true },
-        RUN_CODE: { USE: true },
-        WEB_SEARCH: { USE: true },
-        PEOPLE_PICKER: { VIEW_USERS: true, VIEW_GROUPS: true, VIEW_ROLES: true },
-        MARKETPLACE: { USE: false },
-        FILE_SEARCH: { USE: true },
-        FILE_CITATIONS: { USE: true },
-        MCP_SERVERS: { USE: true, CREATE: true, SHARE: false, SHARE_PUBLIC: false },
-        REMOTE_AGENTS: { USE: false, CREATE: false, SHARE: false, SHARE_PUBLIC: false },
-      };
-      return JSON.parse(JSON.stringify(structure));
-    },
-    async loadRoles() {
-      this.loading = true;
-      try {
-        const response = await this.$axios.get('/api/roles?limit=100');
-        this.roles = response.data.documents || [];
-      } catch (error) {
-        console.error('Error loading roles:', error);
-        alert('Error cargando roles: ' + error.message);
-      } finally {
-        this.loading = false;
-      }
-    },
-    editRole(role) {
-      this.editingRole = role;
-      // Merge with default to ensure all keys exist for the UI
-      const base = this.getDefaultPermissions();
-      const merged = { ...base };
+<script setup>
+import { onMounted } from 'vue';
+import { useRoles } from '../composables/useRoles';
 
-      if (role.permissions) {
-        for (const type in role.permissions) {
-          merged[type] = { ...base[type], ...role.permissions[type] };
-        }
-      }
+const {
+  roles,
+  loading,
+  showCreateForm,
+  creatingStore,
+  editingRole,
+  formData,
+  permissionMap,
+  hasStoreRole,
+  isProtectedRole,
+  loadRoles,
+  openCreateForm,
+  createStoreRole,
+  editRole,
+  saveRole,
+  closeForm,
+  removeRole,
+} = useRoles();
 
-      this.formData = {
-        name: role.name,
-        permissions: merged,
-      };
-      this.showCreateForm = true;
-    },
-    async saveRole() {
-      try {
-        const payload = {
-          name: this.formData.name.trim(),
-          permissions: this.formData.permissions,
-        };
-        if (this.editingRole) {
-          await this.$axios.put(`/api/roles/${this.editingRole._id}`, payload);
-        } else {
-          await this.$axios.post('/api/roles', payload);
-        }
-        this.closeForm();
-        this.loadRoles();
-      } catch (error) {
-        const message = error.response?.data?.error || error.message;
-        alert('Error guardando rol: ' + message);
-      }
-    },
-    closeForm() {
-      this.showCreateForm = false;
-      this.editingRole = null;
-      this.formData = {
-        name: '',
-        permissions: this.getDefaultPermissions(),
-      };
-    },
-    async deleteRole(id) {
-      if (confirm('¿Eliminar rol?')) {
-        try {
-          await this.$axios.delete(`/api/roles/${id}`);
-          alert('Rol eliminado');
-          this.loadRoles();
-        } catch (error) {
-          alert('Error eliminando rol: ' + error.message);
-        }
-      }
-    },
-  },
-};
+onMounted(() => {
+  loadRoles();
+});
 </script>
 
 <style scoped>

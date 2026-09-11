@@ -172,130 +172,36 @@
   </div>
 </template>
 
-<script>
-const PALETTE = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
+<script setup>
+import { onMounted } from 'vue';
+import { useStats } from '../composables/useStats';
 
-function pieSlices(items, total) {
-  let angle = -Math.PI / 2;
-  return items.map((item, i) => {
-    const ratio = item.count / total;
-    const sweep = ratio * 2 * Math.PI;
-    const x1 = Math.cos(angle) * 50;
-    const y1 = Math.sin(angle) * 50;
-    angle += sweep;
-    const x2 = Math.cos(angle) * 50;
-    const y2 = Math.sin(angle) * 50;
-    const large = sweep > Math.PI ? 1 : 0;
-    return {
-      d: `M0 0 L${x1} ${y1} A50 50 0 ${large} 1 ${x2} ${y2} Z`,
-      color: PALETTE[i % PALETTE.length],
-      label: item._id,
-      count: item.count,
-    };
-  });
-}
+const {
+  loading,
+  error,
+  stats,
+  barW,
+  barH,
+  totalTokens,
+  promptTokens,
+  completionTokens,
+  avgMsgPerConv,
+  maxModelCount,
+  maxUserTokens,
+  msgBars,
+  activeUserBars,
+  endpointSlices,
+  tokenSlices,
+  loadStats,
+  fmt,
+  fmtM,
+  pct,
+  shortModel,
+} = useStats();
 
-export default {
-  name: 'Statistics',
-  data() {
-    return {
-      loading: true,
-      error: null,
-      stats: null,
-      barW: 600,
-      barH: 140,
-    };
-  },
-  async mounted() {
-    await this.fetchStats();
-  },
-  computed: {
-    totalTokens() {
-      return this.stats?.tokensByType?.reduce((s, t) => s + t.total, 0) ?? 0;
-    },
-    promptTokens() {
-      return this.stats?.tokensByType?.find((t) => t._id === 'prompt')?.total ?? 0;
-    },
-    completionTokens() {
-      return this.stats?.tokensByType?.find((t) => t._id === 'completion')?.total ?? 0;
-    },
-    avgMsgPerConv() {
-      const total = this.stats?.totals?.totalConversations;
-      if (!total) return 0;
-      return (this.stats.totals.totalMessages / total).toFixed(1);
-    },
-    maxModelCount() {
-      return Math.max(...(this.stats?.messagesByModel?.map((m) => m.count) ?? []), 1);
-    },
-    maxUserTokens() {
-      return Math.max(...(this.stats?.topUsersByTokens?.map((u) => u.totalTokens) ?? []), 1);
-    },
-    msgBars() {
-      return this.stats ? this.buildBars(this.stats.messagesByDay, 'count') : [];
-    },
-    activeUserBars() {
-      return this.stats ? this.buildBars(this.stats.activeUsersByDay, 'activeUsers') : [];
-    },
-    endpointSlices() {
-      if (!this.stats) return [];
-      const total = this.stats.messagesByEndpoint.reduce((s, e) => s + e.count, 0) || 1;
-      return pieSlices(this.stats.messagesByEndpoint, total);
-    },
-    tokenSlices() {
-      if (!this.stats) return [];
-      const items = this.stats.tokensByType.map((t) => ({ _id: t._id, count: t.total }));
-      const total = this.totalTokens || 1;
-      return pieSlices(items, total);
-    },
-  },
-  methods: {
-    async fetchStats() {
-      try {
-        const res = await this.$axios.get('/api/stats');
-        this.stats = res.data;
-      } catch (e) {
-        this.error = 'Error cargando estadísticas: ' + e.message;
-      } finally {
-        this.loading = false;
-      }
-    },
-    fmt(n) {
-      return (n ?? 0).toLocaleString('es-MX');
-    },
-    fmtM(n) {
-      if (!n) return '0';
-      if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
-      if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
-      return String(n);
-    },
-    pct(val, max) {
-      if (!max) return 0;
-      return Math.round((val / max) * 100);
-    },
-    shortModel(id) {
-      if (!id) return 'unknown';
-      if (id.startsWith('agent_')) return id.slice(0, 16) + '…';
-      return id.length > 24 ? id.slice(-24) : id;
-    },
-    buildBars(data, field) {
-      const max = Math.max(...data.map((d) => d[field]), 1);
-      const chartH = this.barH - 20;
-      const count = data.length || 1;
-      const w = this.barW / count - 2;
-      return data.map((d, i) => {
-        const h = (d[field] / max) * chartH;
-        return {
-          x: i * (this.barW / count) + 1,
-          y: chartH - h,
-          w,
-          h,
-          count: d[field],
-          label: (d._id || '').slice(5),
-        };
-      });
-    },
-  },
-};
+onMounted(() => {
+  loadStats();
+});
 </script>
 
 <style scoped>

@@ -2,12 +2,7 @@
   <div class="users-container">
     <div class="header-actions">
       <div class="search-box">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Buscar usuario..."
-          @input="filterUsers"
-        />
+        <input v-model="searchQuery" type="text" placeholder="Buscar usuario..." />
       </div>
       <button class="btn btn-primary" @click="showCreateForm = true">➕ Nuevo Usuario</button>
     </div>
@@ -37,7 +32,7 @@
             <td>{{ formatDate(user.createdAt) }}</td>
             <td class="actions">
               <button class="btn-icon" @click="editUser(user)" title="Editar">✏️</button>
-              <button class="btn-icon danger" @click="deleteUser(user._id)" title="Eliminar">
+              <button class="btn-icon danger" @click="removeUser(user._id)" title="Eliminar">
                 🗑️
               </button>
             </td>
@@ -51,7 +46,7 @@
     </div>
 
     <!-- Create/Edit Modal -->
-    <div v-if="showCreateForm" class="modal-overlay" @click="showCreateForm = false">
+    <div v-if="showCreateForm" class="modal-overlay" @click="closeForm">
       <div class="modal" @click.stop>
         <h3>{{ editingUser ? 'Editar Usuario' : 'Nuevo Usuario' }}</h3>
         <form @submit.prevent="saveUser">
@@ -69,7 +64,7 @@
               <button
                 type="button"
                 class="btn-generate"
-                @click="generatePassword"
+                @click="onGeneratePassword"
                 title="Generar contraseña aleatoria"
               >
                 🔐 Generar
@@ -103,12 +98,12 @@
             <div v-if="formData.password" class="password-strength">
               <div class="strength-bar">
                 <div
-                  :class="['strength-fill', getPasswordStrength().level]"
-                  :style="{ width: getPasswordStrength().percentage + '%' }"
+                  :class="['strength-fill', passwordStrength().level]"
+                  :style="{ width: passwordStrength().percentage + '%' }"
                 ></div>
               </div>
-              <small :class="['strength-text', getPasswordStrength().level]">
-                Fortaleza: {{ getPasswordStrength().text }}
+              <small :class="['strength-text', passwordStrength().level]">
+                Fortaleza: {{ passwordStrength().text }}
               </small>
             </div>
             <small v-if="editingUser" class="form-hint"
@@ -139,7 +134,7 @@
             <button type="submit" class="btn btn-primary">
               {{ editingUser ? 'Actualizar' : 'Crear' }}
             </button>
-            <button type="button" class="btn btn-secondary" @click="showCreateForm = false">
+            <button type="button" class="btn btn-secondary" @click="closeForm">
               Cancelar
             </button>
           </div>
@@ -149,211 +144,38 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'Users',
-  data() {
-    return {
-      users: [],
-      filteredUsers: [],
-      searchQuery: '',
-      loading: false,
-      showCreateForm: false,
-      showPasswordField: false,
-      showPassword: false,
-      copyFeedback: '📋',
-      editingUser: null,
-      availableRoles: ['USER', 'STORE', 'ADMIN'],
-      formData: {
-        email: '',
-        name: '',
-        password: '',
-        role: 'USER',
-      },
-    };
-  },
-  mounted() {
-    this.loadUsers();
-    this.loadRoles();
-  },
-  methods: {
-    async loadRoles() {
-      try {
-        const response = await this.$axios.get('/api/roles?limit=200');
-        const names = (response.data.documents || [])
-          .map((role) => role.name)
-          .filter(Boolean);
-        if (names.length) {
-          this.availableRoles = names;
-        }
-      } catch (error) {
-        console.error('Error loading roles:', error);
-      }
-    },
-    async loadUsers() {
-      this.loading = true;
-      try {
-        const response = await this.$axios.get('/api/users?limit=100');
-        this.users = response.data.documents || [];
-        this.filteredUsers = [...this.users];
-      } catch (error) {
-        console.error('Error loading users:', error);
-        alert('Error cargando usuarios: ' + error.message);
-      } finally {
-        this.loading = false;
-      }
-    },
-    filterUsers() {
-      this.filteredUsers = this.users.filter(
-        (user) =>
-          user.email?.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-          user.name?.toLowerCase().includes(this.searchQuery.toLowerCase()),
-      );
-    },
-    editUser(user) {
-      this.editingUser = user;
-      this.showPasswordField = false;
-      this.formData = {
-        email: user.email,
-        name: user.name || '',
-        password: '',
-        role: user.role || 'USER',
-      };
-      this.showCreateForm = true;
-    },
-    async saveUser() {
-      try {
-        if (this.editingUser) {
-          // Update existing user
-          const updateData = {
-            email: this.formData.email,
-            name: this.formData.name,
-            role: this.formData.role,
-          };
-          await this.$axios.put(`/api/users/${this.editingUser._id}`, updateData);
+<script setup>
+import { onMounted } from 'vue';
+import { useUsers } from '../composables/useUsers';
 
-          // If password is provided, reset it
-          if (this.formData.password) {
-            await this.$axios.put(`/api/users/${this.editingUser._id}/password`, {
-              password: this.formData.password,
-            });
-          }
+const {
+  filteredUsers,
+  searchQuery,
+  loading,
+  showCreateForm,
+  showPasswordField,
+  showPassword,
+  copyFeedback,
+  editingUser,
+  availableRoles,
+  formData,
+  loadRoles,
+  loadUsers,
+  editUser,
+  closeForm,
+  saveUser,
+  removeUser,
+  onGeneratePassword,
+  togglePasswordVisibility,
+  copyPasswordToClipboard,
+  passwordStrength,
+  formatDate,
+} = useUsers();
 
-          alert('Usuario actualizado');
-        } else {
-          // Create new user
-          if (!this.formData.password) {
-            alert('Contraseña es requerida');
-            return;
-          }
-          await this.$axios.post('/api/users', this.formData);
-          alert('Usuario creado exitosamente');
-        }
-        this.showCreateForm = false;
-        this.showPasswordField = false;
-        this.editingUser = null;
-        this.formData = { email: '', name: '', password: '', role: 'USER' };
-        this.loadUsers();
-      } catch (error) {
-        alert('Error guardando usuario: ' + error.message);
-      }
-    },
-    async deleteUser(id) {
-      if (confirm('¿Eliminar usuario?')) {
-        try {
-          await this.$axios.delete(`/api/users/${id}`);
-          alert('Usuario eliminado');
-          this.loadUsers();
-        } catch (error) {
-          alert('Error eliminando usuario: ' + error.message);
-        }
-      }
-    },
-    formatDate(date) {
-      if (!date) return '-';
-      return new Date(date).toLocaleDateString('es-ES');
-    },
-    generatePassword() {
-      const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-      const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-      const numbers = '0123456789';
-      const symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-
-      const allChars = uppercase + lowercase + numbers + symbols;
-      let password = '';
-
-      // Asegurar al menos un carácter de cada tipo
-      password += uppercase[Math.floor(Math.random() * uppercase.length)];
-      password += lowercase[Math.floor(Math.random() * lowercase.length)];
-      password += numbers[Math.floor(Math.random() * numbers.length)];
-      password += symbols[Math.floor(Math.random() * symbols.length)];
-
-      // Llenar el resto (total 16 caracteres)
-      for (let i = password.length; i < 16; i++) {
-        password += allChars[Math.floor(Math.random() * allChars.length)];
-      }
-
-      // Mezclar los caracteres
-      password = password
-        .split('')
-        .sort(() => Math.random() - 0.5)
-        .join('');
-
-      this.formData.password = password;
-      this.showPassword = true;
-      this.copyFeedback = '📋';
-    },
-    togglePasswordVisibility() {
-      this.showPassword = !this.showPassword;
-    },
-    copyPasswordToClipboard() {
-      navigator.clipboard
-        .writeText(this.formData.password)
-        .then(() => {
-          this.copyFeedback = '✅ Copiado!';
-          setTimeout(() => {
-            this.copyFeedback = '📋';
-          }, 2000);
-        })
-        .catch(() => {
-          alert('Error al copiar la contraseña');
-        });
-    },
-    getPasswordStrength() {
-      const password = this.formData.password;
-      let strength = 0;
-
-      if (!password) return { level: 'empty', percentage: 0, text: 'Vacío' };
-      if (password.length >= 8) strength++;
-      if (password.length >= 12) strength++;
-      if (password.length >= 16) strength++;
-      if (/[a-z]/.test(password)) strength++;
-      if (/[A-Z]/.test(password)) strength++;
-      if (/[0-9]/.test(password)) strength++;
-      if (/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)) strength++;
-
-      let level = 'weak';
-      let text = 'Débil';
-      let percentage = (strength / 7) * 100;
-
-      if (strength >= 6) {
-        level = 'strong';
-        text = 'Fuerte';
-        percentage = 100;
-      } else if (strength >= 4) {
-        level = 'medium';
-        text = 'Media';
-        percentage = 66;
-      } else if (strength >= 2) {
-        level = 'fair';
-        text = 'Aceptable';
-        percentage = 33;
-      }
-
-      return { level, percentage, text };
-    },
-  },
-};
+onMounted(() => {
+  loadUsers();
+  loadRoles();
+});
 </script>
 
 <style scoped>

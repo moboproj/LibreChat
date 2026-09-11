@@ -6,10 +6,10 @@
           v-model="searchQuery"
           type="text"
           placeholder="Buscar MCP Server..."
-          @input="filterServers"
+          
         />
       </div>
-      <button class="btn btn-primary" @click="showCreateForm = true">➕ Nuevo MCP Server</button>
+      <button class="btn btn-primary" @click="openCreateForm">➕ Nuevo MCP Server</button>
     </div>
 
     <div v-if="loading" class="loading">Cargando MCP Servers...</div>
@@ -20,7 +20,7 @@
           <h4>{{ server.serverName }}</h4>
           <div class="card-actions">
             <button class="btn-icon" @click="editServer(server)" title="Editar">✏️</button>
-            <button class="btn-icon danger" @click="deleteServer(server._id)" title="Eliminar">
+            <button class="btn-icon danger" @click="removeServer(server._id)" title="Eliminar">
               🗑️
             </button>
           </div>
@@ -157,224 +157,30 @@
   </div>
 </template>
 
-<script>
-import yaml from 'js-yaml';
+<script setup>
+import { onMounted } from 'vue';
+import { useMcpServers } from '../composables/useMcpServers';
 
-export default {
-  name: 'MCPServers',
-  data() {
-    return {
-      servers: [],
-      filteredServers: [],
-      searchQuery: '',
-      loading: false,
-      showCreateForm: false,
-      editingServer: null,
-      mode: 'form', // 'form' or 'yaml'
-      formData: {
-        serverName: '',
-        description: '',
-        type: 'streamable-http',
-        url: '',
-        headersJSON: '{}',
-        customUserVarsJSON: '{}',
-        capabilitiesJSON: '{"tools":{}}',
-        toolFunctionsJSON: '{}',
-        yamlContent: '',
-      },
-    };
-  },
-  mounted() {
-    this.loadServers();
-  },
-  methods: {
-    async loadServers() {
-      this.loading = true;
-      try {
-        const response = await this.$axios.get('/api/mcpservers?limit=100');
-        const rawServers = response.data.documents || [];
-        this.servers = rawServers.map((server) => {
-          const config = { ...(server.config || {}) };
+const {
+  filteredServers,
+  searchQuery,
+  loading,
+  showCreateForm,
+  editingServer,
+  mode,
+  formData,
+  loadServers,
+  setMode,
+  editServer,
+  saveServer,
+  closeForm,
+  openCreateForm,
+  removeServer,
+} = useMcpServers();
 
-          // Parse capabilities if stringified
-          if (typeof config.capabilities === 'string') {
-            try {
-              config.capabilities = JSON.parse(config.capabilities);
-            } catch (e) {
-              console.error('Failed to parse capabilities', e);
-            }
-          }
-
-          // Parse toolFunctions if stringified
-          if (typeof config.toolFunctions === 'string') {
-            try {
-              config.toolFunctions = JSON.parse(config.toolFunctions);
-            } catch (e) {
-              console.error('Failed to parse toolFunctions', e);
-            }
-          }
-
-          // Ensure tools count/list is accurate for display
-          if (!config.tools && config.capabilities?.tools) {
-            const toolCount = Object.keys(config.capabilities.tools).length;
-            config.tools = toolCount > 0 ? `${toolCount} tools` : '0 tools';
-          } else if (typeof config.tools === 'number') {
-            config.tools = `${config.tools} tools`;
-          }
-
-          return { ...server, config };
-        });
-        this.filteredServers = [...this.servers];
-      } catch (error) {
-        console.error('Error loading MCP servers:', error);
-        alert('Error cargando MCP Servers: ' + error.message);
-      } finally {
-        this.loading = false;
-      }
-    },
-    filterServers() {
-      this.filteredServers = this.servers.filter((server) =>
-        server.serverName?.toLowerCase().includes(this.searchQuery.toLowerCase()),
-      );
-    },
-    setMode(newMode) {
-      if (this.mode === newMode) return;
-
-      try {
-        if (newMode === 'yaml') {
-          // Sync from form to YAML
-          const currentConfig = this.getPayloadFromForm().config;
-          const yamlObj = {
-            serverName: this.formData.serverName,
-            ...currentConfig,
-          };
-          this.formData.yamlContent = yaml.dump(yamlObj);
-        } else {
-          // Sync from YAML to form
-          const yamlObj = yaml.load(this.formData.yamlContent);
-          if (yamlObj) {
-            this.formData.serverName = yamlObj.serverName || this.formData.serverName;
-            this.formData.description = yamlObj.description || '';
-            this.formData.type = yamlObj.type || 'streamable-http';
-            this.formData.url = yamlObj.url || '';
-            this.formData.headersJSON = JSON.stringify(yamlObj.headers || {}, null, 2);
-            this.formData.customUserVarsJSON = JSON.stringify(
-              yamlObj.customUserVars || {},
-              null,
-              2,
-            );
-            this.formData.capabilitiesJSON = JSON.stringify(
-              yamlObj.capabilities || { tools: {} },
-              null,
-              2,
-            );
-            this.formData.toolFunctionsJSON = JSON.stringify(yamlObj.toolFunctions || {}, null, 2);
-          }
-        }
-        this.mode = newMode;
-      } catch (e) {
-        alert('Error al convertir entre formatos: ' + e.message);
-      }
-    },
-    editServer(server) {
-      this.editingServer = server;
-      this.formData = {
-        serverName: server.serverName,
-        description: server.config?.description || '',
-        type: server.config?.type || 'streamable-http',
-        url: server.config?.url || '',
-        headersJSON: JSON.stringify(server.config?.headers || {}, null, 2),
-        customUserVarsJSON: JSON.stringify(server.config?.customUserVars || {}, null, 2),
-        capabilitiesJSON:
-          typeof server.config?.capabilities === 'string'
-            ? server.config.capabilities
-            : JSON.stringify(server.config?.capabilities || { tools: {} }, null, 2),
-        toolFunctionsJSON: JSON.stringify(server.config?.toolFunctions || {}, null, 2),
-        yamlContent: '',
-      };
-      this.mode = 'form';
-      this.showCreateForm = true;
-    },
-    getPayloadFromForm() {
-      const capabilities = JSON.parse(this.formData.capabilitiesJSON || '{"tools":{}}');
-      const toolFunctions = JSON.parse(this.formData.toolFunctionsJSON || '{}');
-      const headers = JSON.parse(this.formData.headersJSON || '{}');
-      const customUserVars = JSON.parse(this.formData.customUserVarsJSON || '{}');
-
-      return {
-        serverName: this.formData.serverName,
-        config: {
-          title: this.formData.serverName,
-          description: this.formData.description,
-          type: this.formData.type,
-          url: this.formData.url,
-          headers,
-          customUserVars,
-          requiresOAuth: false,
-          capabilities,
-          toolFunctions,
-        },
-      };
-    },
-    async saveServer() {
-      try {
-        let payload;
-        if (this.mode === 'yaml') {
-          const yamlObj = yaml.load(this.formData.yamlContent);
-          if (!yamlObj || !yamlObj.serverName) {
-            throw new Error('El YAML debe contener al menos "serverName"');
-          }
-          const { serverName, ...config } = yamlObj;
-          payload = { serverName, config };
-        } else {
-          payload = this.getPayloadFromForm();
-        }
-
-        if (this.editingServer) {
-          await this.$axios.put(`/api/mcpservers/${this.editingServer._id}`, payload);
-          alert('MCP Server actualizado');
-        } else {
-          await this.$axios.post('/api/mcpservers', payload);
-          alert('MCP Server creado');
-        }
-        this.closeForm();
-        this.loadServers();
-      } catch (error) {
-        alert('Error guardando MCP Server: ' + error.message);
-      }
-    },
-    closeForm() {
-      this.showCreateForm = false;
-      this.editingServer = null;
-      this.mode = 'form';
-      this.formData = {
-        serverName: '',
-        type: 'streamable-http',
-        url: '',
-        headersJSON: '{}',
-        customUserVarsJSON: '{}',
-        capabilitiesJSON: '{"tools":{}}',
-        toolFunctionsJSON: '{}',
-        yamlContent: '',
-      };
-    },
-    async deleteServer(id) {
-      if (confirm('¿Eliminar MCP Server?')) {
-        try {
-          await this.$axios.delete(`/api/mcpservers/${id}`);
-          alert('MCP Server eliminado');
-          this.loadServers();
-        } catch (error) {
-          alert('Error eliminando MCP Server: ' + error.message);
-        }
-      }
-    },
-    formatDate(date) {
-      if (!date) return '-';
-      return new Date(date).toLocaleDateString('es-ES');
-    },
-  },
-};
+onMounted(() => {
+  loadServers();
+});
 </script>
 
 <style scoped>

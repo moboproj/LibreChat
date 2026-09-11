@@ -39,40 +39,15 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'Dashboard',
-  data() {
-    return {
-      stats: {
-        users: 0,
-        mcpServers: 0,
-        roles: 0,
-        collections: 0
-      }
-    }
-  },
-  mounted() {
-    this.loadStats()
-  },
-  methods: {
-    async loadStats() {
-      try {
-        const response = await this.$axios.get('/api/stats');
-        const data = response.data;
-        
-        if (data.totals) {
-          this.stats.users = data.totals.totalUsers || 0;
-          this.stats.mcpServers = data.totals.totalMCPServers || data.totals.totalAgents || 0;
-          this.stats.roles = data.totals.totalRoles || 0;
-          this.stats.collections = data.totals.totalConversations || 0;
-        }
-      } catch (error) {
-        console.error('Error loading stats:', error);
-      }
-    }
-  }
-}
+<script setup>
+import { onMounted } from 'vue';
+import { useDashboard } from '../composables/useStats';
+
+const { stats, loadStats } = useDashboard();
+
+onMounted(() => {
+  loadStats();
+});
 </script>
 
 <style scoped>
