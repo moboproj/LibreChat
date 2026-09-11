@@ -19,6 +19,9 @@ process.env.MONGODB_URI = resolveMongoUri();
 process.env.MONGODB_URI_PRIMARY = process.env.MONGODB_URI;
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test_jwt_secret_admin_panel';
 process.env.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'test_jwt_refresh_secret_admin';
+// Always enable user writes in shared CRUD helpers (SSO lock has its own test file).
+process.env.ADMIN_USERS_WRITE_ENABLED = 'true';
+process.env.ADMIN_LOCAL_LOGIN_ENABLED = 'true';
 
 const { createApp } = require('../app');
 const { connectDB, closeDB, getWriteDB } = require('../config/db');

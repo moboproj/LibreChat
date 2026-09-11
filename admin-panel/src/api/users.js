@@ -36,3 +36,19 @@ export function updateUserPassword(id, password) {
 export function deleteUser(id) {
   return http.delete(`/api/users/${id}`);
 }
+
+export function getSsoLinkStatus() {
+  return http.get('/api/users/sso/status');
+}
+
+export function getSsoRoles() {
+  return http.get('/api/users/sso/roles');
+}
+
+export function getSsoEmployee(employeeNumber) {
+  return http.get(`/api/users/sso/employees/${encodeURIComponent(employeeNumber)}`);
+}
+
+export function linkSsoUser(payload) {
+  return http.post('/api/users/sso/link', payload);
+}

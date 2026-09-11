@@ -2,17 +2,24 @@
   <div class="flex min-h-screen overflow-x-hidden" style="background: var(--app-bg)">
     <FeedbackModal />
 
-    <LoadingOverlay v-if="isInitializing" />
+    <LoadingOverlay v-if="isInitializing && !isAuthCallbackRoute && !isRedirectingToSso" />
 
-    <LoginForm
-      v-else-if="requiresAuth && !isAuthenticated"
-      v-model:email="loginEmail"
-      v-model:password="loginPassword"
-      :error="loginError"
-      @submit="login"
+    <div
+      v-else-if="isRedirectingToSso && !isAuthCallbackRoute"
+      class="min-h-screen"
+      style="background: var(--app-bg)"
     />
 
-    <template v-else>
+    <router-view v-else-if="isAuthCallbackRoute" />
+
+    <LoginForm
+      v-else-if="requiresAuth && !isAuthenticated && !openidEnabled"
+      :error="loginError || 'SSO no está configurado'"
+      :openid-enabled="false"
+      :openid-button-label="openidButtonLabel"
+    />
+
+    <template v-else-if="isAuthenticated">
       <div
         v-if="mobileOpen"
         class="fixed inset-0 z-30 bg-black/50 md:hidden"
@@ -22,7 +29,7 @@
 
       <AppSidebar
         :items="navItems"
-        :user="isAuthenticated ? currentUser : null"
+        :user="currentUser"
         @logout="logout"
       />
 
@@ -81,12 +88,13 @@ const {
   requiresAuth,
   isAuthenticated,
   isInitializing,
+  isRedirectingToSso,
   currentUser,
-  loginEmail,
-  loginPassword,
   loginError,
+  openidEnabled,
+  openidButtonLabel,
   initialize,
-  login,
+  startOpenIdLogin,
   logout,
 } = useAuth();
 
@@ -109,6 +117,15 @@ const pageTitle = computed(() => {
   return match?.label || route.name || 'Admin';
 });
 
+const isAuthCallbackRoute = computed(() => {
+  if (route.path.startsWith('/auth/')) return true;
+  // Guardia extra: a veces el router aún no resolvió y el watch disparaba SSO otra vez.
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/auth/')) {
+    return true;
+  }
+  return false;
+});
+
 const mainStyle = computed(() => ({
   '--sidebar-current-width': collapsed.value
     ? 'var(--sidebar-width-collapsed)'
@@ -119,6 +136,19 @@ watch(
   () => route.fullPath,
   () => {
     closeMobile();
+  },
+);
+
+// Igual que ti-promos SSO_ONLY: sin botón; redirect directo a Keycloak.
+// Nunca iniciar SSO en /auth/* ni si ya hay sesión/token (evita ciclo de codes).
+watch(
+  [isInitializing, isAuthenticated, openidEnabled, isAuthCallbackRoute],
+  ([initializing, authenticated, ssoOn, onCallback]) => {
+    if (initializing || authenticated || onCallback || !ssoOn) return;
+    if (isRedirectingToSso.value) return;
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/auth/')) return;
+    if (localStorage.getItem('accessToken') || localStorage.getItem('admin_session')) return;
+    startOpenIdLogin();
   },
 );
 

@@ -6,6 +6,7 @@ const {
   JWT_EXPIRES_IN,
   JWT_REFRESH_EXPIRES_IN,
 } = require('../config/db');
+const config = require('../config/env');
 const User = require('../models/user.model');
 const RefreshToken = require('../models/refreshToken.model');
 
@@ -18,6 +19,13 @@ function buildPayload(user) {
 }
 
 const login = async (req, res) => {
+  if (!config.localLoginEnabled) {
+    return res.status(403).json({
+      valid: false,
+      message: 'El login local está deshabilitado. Usa SSO.',
+    });
+  }
+
   try {
     const { email, password } = req.body;
 
@@ -117,7 +125,15 @@ const logout = async (req, res) => {
 };
 
 const getConfig = (req, res) => {
-  res.json({ passwordRequired: true, authEnabled: true });
+  res.json({
+    passwordRequired: false,
+    localLoginEnabled: Boolean(config.localLoginEnabled),
+    authEnabled: true,
+    usersWriteEnabled: Boolean(config.usersWriteEnabled),
+    ssoLinkConfigured: Boolean(config.ssoLinkConfigured),
+    openidEnabled: Boolean(config.openidEnabled),
+    openidButtonLabel: 'Iniciar sesión con SSO',
+  });
 };
 
 module.exports = {

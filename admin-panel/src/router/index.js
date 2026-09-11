@@ -11,6 +11,18 @@ import Files from '../views/Files.vue';
 
 const routes = [
   {
+    path: '/auth/openid/callback',
+    name: 'OpenIdCallback',
+    component: () => import('../views/OpenIdCallback.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
+    path: '/auth/signed-out',
+    name: 'SignedOut',
+    component: () => import('../views/SignedOut.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
     path: '/',
     name: 'Dashboard',
     component: Dashboard,

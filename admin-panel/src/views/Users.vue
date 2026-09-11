@@ -5,24 +5,33 @@
         <p class="text-xs uppercase tracking-wider text-[var(--text-muted)]">Catálogo</p>
         <h2 class="text-xl font-semibold text-[var(--text)]">Usuarios</h2>
         <p class="text-sm text-[var(--text-muted)]">
-          Gestión de cuentas · paginación en API
+          {{
+            usersWriteEnabled
+              ? 'Gestión de cuentas · paginación en API'
+              : 'Solo lectura · vincular por nº empleado (SSO). Alta/baja en Keycloak.'
+          }}
         </p>
       </div>
       <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <button type="button" class="ui-btn-secondary w-full sm:w-auto" @click="exportCsv">
           Exportar CSV
         </button>
-        <button
-          type="button"
-          class="ui-btn-secondary w-full sm:w-auto text-red-300"
-          :disabled="!selectedIds.length || bulkLoading"
-          @click="removeSelected"
-        >
-          Eliminar ({{ selectedIds.length }})
+        <button type="button" class="ui-btn-primary w-full sm:w-auto" @click="openLinkForm">
+          Vincular SSO
         </button>
-        <button type="button" class="ui-btn-primary w-full sm:w-auto" @click="showCreateForm = true">
-          Nuevo usuario
-        </button>
+        <template v-if="usersWriteEnabled">
+          <button
+            type="button"
+            class="ui-btn-secondary w-full sm:w-auto text-red-300"
+            :disabled="!selectedIds.length || bulkLoading"
+            @click="removeSelected"
+          >
+            Eliminar ({{ selectedIds.length }})
+          </button>
+          <button type="button" class="ui-btn-primary w-full sm:w-auto" @click="showCreateForm = true">
+            Nuevo usuario
+          </button>
+        </template>
       </div>
     </div>
 
@@ -53,7 +62,7 @@
                 class="border-b text-xs uppercase tracking-wide text-[var(--text-muted)]"
                 style="border-color: var(--border)"
               >
-                <th class="px-2 py-2 font-medium">
+                <th v-if="usersWriteEnabled" class="px-2 py-2 font-medium">
                   <input
                     type="checkbox"
                     :checked="allPageSelected"
@@ -75,7 +84,7 @@
                 class="border-b"
                 style="border-color: var(--border)"
               >
-                <td class="px-2 py-3">
+                <td v-if="usersWriteEnabled" class="px-2 py-3">
                   <input
                     type="checkbox"
                     :checked="selectedIds.includes(user._id)"
@@ -108,16 +117,18 @@
                   <button type="button" class="ui-btn-ghost px-2 py-1" @click="openUsage(user)">
                     Uso
                   </button>
-                  <button type="button" class="ui-btn-ghost px-2 py-1" @click="editUser(user)">
-                    Editar
-                  </button>
-                  <button
-                    type="button"
-                    class="ui-btn-ghost px-2 py-1 text-red-300"
-                    @click="removeUser(user._id)"
-                  >
-                    Eliminar
-                  </button>
+                  <template v-if="usersWriteEnabled">
+                    <button type="button" class="ui-btn-ghost px-2 py-1" @click="editUser(user)">
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      class="ui-btn-ghost px-2 py-1 text-red-300"
+                      @click="removeUser(user._id)"
+                    >
+                      Eliminar
+                    </button>
+                  </template>
                 </td>
               </tr>
             </tbody>
@@ -232,7 +243,72 @@
       </div>
     </div>
 
-    <div v-if="showCreateForm" class="ui-modal-overlay" @click="closeForm">
+    <div v-if="showLinkForm" class="ui-modal-overlay" @click="closeLinkForm">
+      <div class="ui-modal max-w-lg" @click.stop>
+        <h3 class="mb-4 text-lg font-semibold text-[var(--text)]">Vincular usuario SSO</h3>
+        <p class="mb-4 text-sm text-[var(--text-muted)]">
+          Busca por número de empleado y vincula el acceso al sistema (igual que promociones).
+          Editar o dar de baja se hace en la consola Keycloak.
+        </p>
+
+        <div class="space-y-3">
+          <div>
+            <label class="ui-label">Número de empleado</label>
+            <div class="flex flex-col gap-2 sm:flex-row">
+              <input
+                v-model="linkForm.employeeNumber"
+                class="ui-input"
+                type="text"
+                placeholder="Ej. 1519"
+                @keyup.enter="searchSsoEmployee"
+              />
+              <button
+                type="button"
+                class="ui-btn-secondary"
+                :disabled="linkSearching"
+                @click="searchSsoEmployee"
+              >
+                {{ linkSearching ? 'Buscando…' : 'Buscar' }}
+              </button>
+            </div>
+          </div>
+
+          <div v-if="ssoEmployee" class="rounded-lg border p-3 text-sm" style="border-color: var(--border)">
+            <p class="font-medium text-[var(--text)]">{{ ssoEmployee.nombre || '—' }}</p>
+            <p class="text-xs text-[var(--text-muted)]">
+              {{ ssoEmployee.email || '—' }} · user {{ ssoEmployee.user }}
+            </p>
+            <p class="mt-1 text-xs text-[var(--text-muted)]">
+              {{ ssoEmployee.linked ? 'Ya vinculado en SSO' : 'No vinculado aún' }}
+            </p>
+          </div>
+
+          <div>
+            <label class="ui-label">Rol SSO</label>
+            <select v-model="linkForm.roleCodigo" class="ui-input" :disabled="!ssoRoles.length">
+              <option disabled value="">Selecciona rol…</option>
+              <option v-for="role in ssoRoles" :key="role.codigo" :value="role.codigo">
+                {{ role.nombre || role.codigo }}
+              </option>
+            </select>
+          </div>
+
+          <div class="flex flex-col-reverse justify-end gap-2 pt-2 sm:flex-row">
+            <button type="button" class="ui-btn-secondary" @click="closeLinkForm">Cancelar</button>
+            <button
+              type="button"
+              class="ui-btn-primary"
+              :disabled="!ssoEmployee || linkSaving"
+              @click="submitLinkSsoUser"
+            >
+              {{ linkSaving ? 'Vinculando…' : 'Vincular' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showCreateForm && usersWriteEnabled" class="ui-modal-overlay" @click="closeForm">
       <div class="ui-modal" @click.stop>
         <h3 class="mb-4 text-lg font-semibold text-[var(--text)]">
           {{ editingUser ? 'Editar usuario' : 'Nuevo usuario' }}
@@ -328,7 +404,9 @@ const {
   loading,
   bulkLoading,
   usageLoading,
+  usersWriteEnabled,
   showCreateForm,
+  showLinkForm,
   showUsage,
   usageData,
   showPasswordField,
@@ -337,6 +415,11 @@ const {
   editingUser,
   availableRoles,
   formData,
+  linkForm,
+  ssoRoles,
+  ssoEmployee,
+  linkSearching,
+  linkSaving,
   page,
   pageSize,
   total,
@@ -345,6 +428,7 @@ const {
   nextPage,
   prevPage,
   setPageSize,
+  loadWritePolicy,
   loadRoles,
   loadUsers,
   toggleSelect,
@@ -352,6 +436,10 @@ const {
   editUser,
   openUsage,
   closeUsage,
+  openLinkForm,
+  closeLinkForm,
+  searchSsoEmployee,
+  submitLinkSsoUser,
   closeForm,
   saveUser,
   removeUser,
@@ -390,7 +478,8 @@ const usageModelBars = computed(() =>
   toBars(usageData.value?.usage?.byModel || [], usageData.value?.usage?.totals?.totalTokens),
 );
 
-onMounted(() => {
+onMounted(async () => {
+  await loadWritePolicy();
   loadUsers();
   loadRoles();
 });

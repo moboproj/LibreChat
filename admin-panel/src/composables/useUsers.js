@@ -6,8 +6,12 @@ import {
   updateUser,
   updateUserPassword,
   deleteUser as deleteUserRequest,
+  getSsoRoles,
+  getSsoEmployee,
+  linkSsoUser,
 } from '../api/users';
 import { listRoles } from '../api/roles';
+import { fetchAuthConfig } from '../api/auth';
 import { formatDate, generatePassword, getPasswordStrength } from '../utils/password';
 import { getErrorMessage, getErrorTitle } from '../utils/errors';
 import { downloadCsv, toCsv } from '../utils/csv';
@@ -21,6 +25,11 @@ const emptyForm = () => ({
   role: 'USER',
 });
 
+const emptyLinkForm = () => ({
+  employeeNumber: '',
+  roleCodigo: '',
+});
+
 export function useUsers() {
   const { showError, showSuccess, confirm } = useFeedback();
   const users = ref([]);
@@ -28,7 +37,10 @@ export function useUsers() {
   const loading = ref(false);
   const bulkLoading = ref(false);
   const usageLoading = ref(false);
+  const usersWriteEnabled = ref(false);
+  const ssoLinkConfigured = ref(false);
   const showCreateForm = ref(false);
+  const showLinkForm = ref(false);
   const showUsage = ref(false);
   const usageData = ref(null);
   const showPasswordField = ref(false);
@@ -37,6 +49,11 @@ export function useUsers() {
   const editingUser = ref(null);
   const availableRoles = ref(['USER', 'STORE', 'ADMIN']);
   const formData = ref(emptyForm());
+  const linkForm = ref(emptyLinkForm());
+  const ssoRoles = ref([]);
+  const ssoEmployee = ref(null);
+  const linkSearching = ref(false);
+  const linkSaving = ref(false);
 
   const pagination = useServerPagination({
     defaultPageSize: 10,
@@ -47,6 +64,115 @@ export function useUsers() {
     () =>
       users.value.length > 0 && users.value.every((user) => selectedIds.value.includes(user._id)),
   );
+
+  async function loadWritePolicy() {
+    try {
+      const response = await fetchAuthConfig();
+      usersWriteEnabled.value = Boolean(response.data.usersWriteEnabled);
+      ssoLinkConfigured.value = Boolean(response.data.ssoLinkConfigured);
+    } catch {
+      usersWriteEnabled.value = false;
+      ssoLinkConfigured.value = false;
+    }
+  }
+
+  async function openLinkForm() {
+    showLinkForm.value = true;
+    ssoEmployee.value = null;
+    linkForm.value = emptyLinkForm();
+    try {
+      const response = await getSsoRoles();
+      ssoRoles.value = response.data.roles || [];
+      const defaultRole =
+        ssoRoles.value.find((role) => role.is_default)?.codigo || ssoRoles.value[0]?.codigo || '';
+      linkForm.value.roleCodigo = defaultRole;
+      ssoLinkConfigured.value = true;
+    } catch (error) {
+      ssoRoles.value = [];
+      showError(
+        getErrorTitle(error, 'No se pudieron cargar roles SSO'),
+        getErrorMessage(error) ||
+          'Inicia sesión con SSO (o revisa SSO_DELEGATED_CLIENT_ID / token bootstrap)',
+      );
+    }
+  }
+
+  function closeLinkForm() {
+    showLinkForm.value = false;
+    ssoEmployee.value = null;
+    linkForm.value = emptyLinkForm();
+    linkSearching.value = false;
+    linkSaving.value = false;
+  }
+
+  async function searchSsoEmployee() {
+    const employeeNumber = linkForm.value.employeeNumber.trim();
+    if (!employeeNumber) {
+      showError('Número requerido', 'Indica el número de empleado.');
+      return;
+    }
+    linkSearching.value = true;
+    ssoEmployee.value = null;
+    try {
+      const response = await getSsoEmployee(employeeNumber);
+      if (!response.data.found || !response.data.empleado) {
+        showError('No encontrado', response.data.error || 'Empleado no encontrado en SSO');
+        return;
+      }
+      if (response.data.empleado.enabled === false) {
+        showError('Bloqueado', 'El empleado está bloqueado en SSO');
+        return;
+      }
+      ssoEmployee.value = response.data.empleado;
+      if (response.data.empleado.linked) {
+        showSuccess('Ya vinculado', 'El empleado ya aparece vinculado al sistema en SSO.');
+      }
+      const existingRole = (response.data.empleado.role_codigos || []).find(
+        (code) => code !== 'access' && code !== 'otp_required',
+      );
+      if (existingRole) {
+        linkForm.value.roleCodigo = existingRole;
+      }
+    } catch (error) {
+      showError(getErrorTitle(error, 'Error al buscar empleado'), getErrorMessage(error));
+    } finally {
+      linkSearching.value = false;
+    }
+  }
+
+  async function submitLinkSsoUser() {
+    if (!ssoEmployee.value) {
+      showError('Busca primero', 'Busca el empleado en SSO antes de vincular.');
+      return;
+    }
+    if (!linkForm.value.roleCodigo) {
+      showError('Rol requerido', 'Selecciona un rol SSO.');
+      return;
+    }
+    linkSaving.value = true;
+    try {
+      const response = await linkSsoUser({
+        user: ssoEmployee.value.user,
+        role_codigos: [linkForm.value.roleCodigo],
+      });
+      if (response.data.warning) {
+        showSuccess('Vinculado en SSO', response.data.warning);
+      } else {
+        showSuccess(
+          'Usuario vinculado',
+          response.data.localUser?.created
+            ? 'Se vinculó en SSO y se creó el usuario local.'
+            : 'Se vinculó en SSO y se actualizó el usuario local.',
+        );
+      }
+      closeLinkForm();
+      await loadUsers();
+    } catch (error) {
+      showError(getErrorTitle(error, 'Error al vincular'), getErrorMessage(error));
+    } finally {
+      linkSaving.value = false;
+    }
+  }
 
   async function loadRoles() {
     try {
@@ -82,6 +208,7 @@ export function useUsers() {
   }
 
   function toggleSelect(id) {
+    if (!usersWriteEnabled.value) return;
     if (selectedIds.value.includes(id)) {
       selectedIds.value = selectedIds.value.filter((item) => item !== id);
       return;
@@ -90,6 +217,7 @@ export function useUsers() {
   }
 
   function toggleSelectPage() {
+    if (!usersWriteEnabled.value) return;
     if (allPageSelected.value) {
       const pageIds = new Set(users.value.map((user) => user._id));
       selectedIds.value = selectedIds.value.filter((id) => !pageIds.has(id));
@@ -100,6 +228,7 @@ export function useUsers() {
   }
 
   function editUser(user) {
+    if (!usersWriteEnabled.value) return;
     editingUser.value = user;
     showPasswordField.value = false;
     formData.value = {
@@ -139,6 +268,10 @@ export function useUsers() {
   }
 
   async function saveUser() {
+    if (!usersWriteEnabled.value) {
+      showError('Escritura deshabilitada', 'Los usuarios se gestionan vía SSO.');
+      return;
+    }
     try {
       if (editingUser.value) {
         await updateUser(editingUser.value._id, {
@@ -166,6 +299,7 @@ export function useUsers() {
   }
 
   async function removeUser(id) {
+    if (!usersWriteEnabled.value) return;
     const ok = await confirm('Eliminar usuario', '¿Seguro que deseas eliminar este usuario?', {
       confirmLabel: 'Eliminar',
     });
@@ -180,7 +314,7 @@ export function useUsers() {
   }
 
   async function removeSelected() {
-    if (!selectedIds.value.length) return;
+    if (!usersWriteEnabled.value || !selectedIds.value.length) return;
     const ok = await confirm(
       'Eliminar seleccionados',
       `¿Eliminar ${selectedIds.value.length} usuario(s)?`,
@@ -268,7 +402,10 @@ export function useUsers() {
     loading,
     bulkLoading,
     usageLoading,
+    usersWriteEnabled,
+    ssoLinkConfigured,
     showCreateForm,
+    showLinkForm,
     showUsage,
     usageData,
     showPasswordField,
@@ -277,6 +414,11 @@ export function useUsers() {
     editingUser,
     availableRoles,
     formData,
+    linkForm,
+    ssoRoles,
+    ssoEmployee,
+    linkSearching,
+    linkSaving,
     page: pagination.page,
     pageSize: pagination.pageSize,
     total: pagination.total,
@@ -286,6 +428,7 @@ export function useUsers() {
     nextPage: pagination.nextPage,
     prevPage: pagination.prevPage,
     setPageSize: pagination.setPageSize,
+    loadWritePolicy,
     loadRoles,
     loadUsers,
     toggleSelect,
@@ -293,6 +436,10 @@ export function useUsers() {
     editUser,
     openUsage,
     closeUsage,
+    openLinkForm,
+    closeLinkForm,
+    searchSsoEmployee,
+    submitLinkSsoUser,
     closeForm,
     saveUser,
     removeUser,

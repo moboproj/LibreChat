@@ -15,6 +15,18 @@ async function findByEmail(email) {
   return usersRead().findOne({ email: String(email).toLowerCase() });
 }
 
+async function findByUsername(username) {
+  const value = String(username || '').trim();
+  if (!value) return null;
+  return usersRead().findOne({ username: value });
+}
+
+async function findByOpenIdId(openidId) {
+  const value = String(openidId || '').trim();
+  if (!value) return null;
+  return usersRead().findOne({ openidId: value });
+}
+
 async function findById(id) {
   if (!ObjectId.isValid(id)) {
     return null;
@@ -83,6 +95,8 @@ async function countCreatedSince(date) {
 
 module.exports = {
   findByEmail,
+  findByUsername,
+  findByOpenIdId,
   findById,
   list,
   listByRole,

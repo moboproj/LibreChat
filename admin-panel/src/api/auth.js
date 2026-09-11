@@ -11,3 +11,7 @@ export function loginRequest(email, password) {
 export function logoutRequest(refreshToken) {
   return http.post('/api/auth/logout', { refreshToken });
 }
+
+export function exchangeOpenIdCode(code) {
+  return http.post('/api/auth/openid/exchange', { code });
+}
