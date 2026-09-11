@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import path from 'path'
+import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+import path from 'path';
 
 export default defineConfig({
   plugins: [vue()],
@@ -14,9 +14,10 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://mongodb-api:8082',
+        // Local npm run dev → localhost. Docker Dockerfile.dev → set VITE_API_PROXY=http://mongodb-api:8082
+        target: process.env.VITE_API_PROXY || 'http://127.0.0.1:8082',
         changeOrigin: true,
-      }
-    }
+      },
+    },
   },
-})
+});

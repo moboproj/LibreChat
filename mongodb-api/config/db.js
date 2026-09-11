@@ -1,54 +1,79 @@
 const { MongoClient } = require('mongodb');
+const config = require('./env');
 
-// Get configuration from environment
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://mongodb:27017/LibreChat';
-// JWT Secret - should be set in environment, fallback for development only
-const JWT_SECRET = process.env.JWT_SECRET || 'librechat_admin_secret_key_change_me_in_production';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'librechat_admin_refresh_secret_change_me';
+let writeClient = null;
+let _readClient = null;
+let writeDb = null;
+let readDb = null;
 
-// JWT expiration times
-const JWT_EXPIRES_IN = '15m'; // Access token is short-lived for security
-const JWT_REFRESH_EXPIRES_IN = '7d'; // Refresh token lives longer
+function dbNameFromUri(uri) {
+  const name = uri.split('/').pop().split('?')[0];
+  return name || 'LibreChat';
+}
 
-// Database connection state
-let db = null;
-let client = null;
-
-/**
- * Connects to MongoDB and returns the database instance
- */
-async function connectDB() {
-  if (db) return db;
-
-  try {
-    client = new MongoClient(MONGODB_URI);
-    await client.connect();
-    // Parse the DB name from the URI. Usually 'LibreChat'
-    const dbName = MONGODB_URI.split('/').pop().split('?')[0] || 'LibreChat';
-    db = client.db(dbName);
-    console.log(`Connected successfully to MongoDB database: ${dbName}`);
-    return db;
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    process.exit(1);
-  }
+async function connectClient(uri) {
+  const client = new MongoClient(uri);
+  await client.connect();
+  return { client, db: client.db(dbNameFromUri(uri)) };
 }
 
 /**
- * Gets the current database instance. Ensure connectDB is called first.
+ * Connects write (primary) and read (replica or same primary) clients.
+ * Option A: set MONGODB_URI_READ to a replica; writes always use primary.
  */
-function getDB() {
-  if (!db) {
+async function connectDB() {
+  if (writeDb && readDb) {
+    return { writeDb, readDb };
+  }
+
+  const write = await connectClient(config.mongoPrimaryUri);
+  writeClient = write.client;
+  writeDb = write.db;
+
+  if (config.mongoReadUri === config.mongoPrimaryUri) {
+    _readClient = writeClient;
+    readDb = writeDb;
+  } else {
+    const read = await connectClient(config.mongoReadUri);
+    _readClient = read.client;
+    readDb = read.db;
+  }
+
+  const same = config.mongoReadUri === config.mongoPrimaryUri;
+  console.log(
+    `Connected to MongoDB primary=${dbNameFromUri(config.mongoPrimaryUri)}` +
+      (same ? ' (read=primary)' : ` read=${dbNameFromUri(config.mongoReadUri)}`),
+  );
+
+  return { writeDb, readDb };
+}
+
+function getWriteDB() {
+  if (!writeDb) {
     throw new Error('Database not initialized. Call connectDB first.');
   }
-  return db;
+  return writeDb;
+}
+
+function getReadDB() {
+  if (!readDb) {
+    throw new Error('Database not initialized. Call connectDB first.');
+  }
+  return readDb;
+}
+
+/** @deprecated Prefer getWriteDB / getReadDB. Defaults to write (primary). */
+function getDB() {
+  return getWriteDB();
 }
 
 module.exports = {
   connectDB,
+  getWriteDB,
+  getReadDB,
   getDB,
-  JWT_SECRET,
-  JWT_REFRESH_SECRET,
-  JWT_EXPIRES_IN,
-  JWT_REFRESH_EXPIRES_IN
+  JWT_SECRET: config.jwtSecret,
+  JWT_REFRESH_SECRET: config.jwtRefreshSecret,
+  JWT_EXPIRES_IN: config.jwtExpiresIn,
+  JWT_REFRESH_EXPIRES_IN: config.jwtRefreshExpiresIn,
 };

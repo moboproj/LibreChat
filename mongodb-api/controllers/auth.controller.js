@@ -1,14 +1,22 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { getDB, JWT_SECRET, JWT_REFRESH_SECRET, JWT_EXPIRES_IN, JWT_REFRESH_EXPIRES_IN } = require('../config/db');
+const {
+  JWT_SECRET,
+  JWT_REFRESH_SECRET,
+  JWT_EXPIRES_IN,
+  JWT_REFRESH_EXPIRES_IN,
+} = require('../config/db');
+const User = require('../models/user.model');
+const RefreshToken = require('../models/refreshToken.model');
 
-// In-memory store for refresh tokens for simplicity
-// In a real prod environment, these should be saved in DB or Redis
-const refreshTokens = new Set();
+function buildPayload(user) {
+  return {
+    id: user._id || user.id,
+    email: user.email,
+    role: user.role,
+  };
+}
 
-/**
- * Handles user login and token generation
- */
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -17,15 +25,23 @@ const login = async (req, res) => {
       return res.status(400).json({ valid: false, message: 'Email y contraseña son obligatorios' });
     }
 
-    const db = getDB();
-    const user = await db.collection('users').findOne({ email: email.toLowerCase() });
-
+    const user = await User.findByEmail(email);
     if (!user) {
       return res.status(401).json({ valid: false, message: 'Usuario no encontrado' });
     }
 
     if (user.role !== 'ADMIN') {
-      return res.status(403).json({ valid: false, message: 'Acceso denegado: Se requiere rol de administrador' });
+      return res
+        .status(403)
+        .json({ valid: false, message: 'Acceso denegado: Se requiere rol de administrador' });
+    }
+
+    if (!user.password) {
+      return res.status(401).json({
+        valid: false,
+        message:
+          'Este usuario no tiene contraseña local (solo SSO). Define una contraseña o usa otro ADMIN.',
+      });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -33,20 +49,15 @@ const login = async (req, res) => {
       return res.status(401).json({ valid: false, message: 'Contraseña incorrecta' });
     }
 
-    // Generate tokens
-    const payload = {
-      id: user._id,
-      email: user.email,
-      role: user.role
-    };
-
+    const payload = buildPayload(user);
     const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-    const refreshToken = jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRES_IN });
-    
-    // Store refresh token
-    refreshTokens.add(refreshToken);
+    const refreshToken = jwt.sign(payload, JWT_REFRESH_SECRET, {
+      expiresIn: JWT_REFRESH_EXPIRES_IN,
+    });
 
-    res.json({
+    await RefreshToken.add(refreshToken, { userId: String(user._id), email: user.email });
+
+    return res.json({
       valid: true,
       accessToken,
       refreshToken,
@@ -59,55 +70,52 @@ const login = async (req, res) => {
     });
   } catch (error) {
     console.error('Error en login:', error);
-    res.status(500).json({ valid: false, message: 'Error interno del servidor', error: error.message });
+    return res
+      .status(500)
+      .json({ valid: false, message: 'Error interno del servidor', error: error.message });
   }
 };
 
-/**
- * Handled token refresh
- */
-const refresh = (req, res) => {
-  const { refreshToken } = req.body;
+const refresh = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
 
-  if (!refreshToken) {
-    return res.status(401).json({ message: 'Refresh Token Requerido' });
-  }
+    if (!refreshToken) {
+      return res.status(401).json({ message: 'Refresh Token Requerido' });
+    }
 
-  if (!refreshTokens.has(refreshToken)) {
-    return res.status(403).json({ message: 'Refresh Token Inválido o Expirado' });
-  }
+    if (!(await RefreshToken.has(refreshToken))) {
+      return res.status(403).json({ message: 'Refresh Token Inválido o Expirado' });
+    }
 
-  jwt.verify(refreshToken, JWT_REFRESH_SECRET, (err, user) => {
-    if (err) {
-      refreshTokens.delete(refreshToken); // cleanup
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
+    } catch {
+      await RefreshToken.remove(refreshToken);
       return res.status(403).json({ message: 'Refresh Token expirado' });
     }
 
-    const payload = {
-      id: user.id,
-      email: user.email,
-      role: user.role
-    };
-
+    const payload = buildPayload(decoded);
     const newAccessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-    res.json({ accessToken: newAccessToken });
-  });
-};
-
-/**
- * Handles logout and refresh token invalidation
- */
-const logout = (req, res) => {
-  const { refreshToken } = req.body;
-  if (refreshToken) {
-    refreshTokens.delete(refreshToken);
+    return res.json({ accessToken: newAccessToken });
+  } catch (error) {
+    console.error('Error en refresh:', error);
+    return res.status(500).json({ message: 'Error interno del servidor', error: error.message });
   }
-  res.json({ message: 'Sesión cerrada exitosamente' });
 };
 
-/**
- * Validates token structure for the frontend configuration check
- */
+const logout = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    await RefreshToken.remove(refreshToken);
+    return res.json({ message: 'Sesión cerrada exitosamente' });
+  } catch (error) {
+    console.error('Error en logout:', error);
+    return res.status(500).json({ message: 'Error interno del servidor', error: error.message });
+  }
+};
+
 const getConfig = (req, res) => {
   res.json({ passwordRequired: true, authEnabled: true });
 };
@@ -116,5 +124,5 @@ module.exports = {
   login,
   refresh,
   logout,
-  getConfig
+  getConfig,
 };
