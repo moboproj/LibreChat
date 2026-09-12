@@ -140,14 +140,14 @@ watch(
 );
 
 // Igual que ti-promos SSO_ONLY: sin botón; redirect directo a Keycloak.
-// Nunca iniciar SSO en /auth/* ni si ya hay sesión/token (evita ciclo de codes).
+// Nunca iniciar SSO en /auth/* ni si ya hay sesión autenticada en memoria.
+// No mirar localStorage aquí: un token huérfano dejaba la UI en blanco sin redirect.
 watch(
   [isInitializing, isAuthenticated, openidEnabled, isAuthCallbackRoute],
   ([initializing, authenticated, ssoOn, onCallback]) => {
     if (initializing || authenticated || onCallback || !ssoOn) return;
     if (isRedirectingToSso.value) return;
     if (typeof window !== 'undefined' && window.location.pathname.startsWith('/auth/')) return;
-    if (localStorage.getItem('accessToken') || localStorage.getItem('admin_session')) return;
     startOpenIdLogin();
   },
 );

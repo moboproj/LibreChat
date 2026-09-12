@@ -43,13 +43,21 @@ function clearSession() {
 
 export function useAuth() {
   async function initialize() {
+    const accessToken = localStorage.getItem('accessToken');
     const savedSession = localStorage.getItem('admin_session');
-    if (savedSession) {
+    // Sesión válida solo con ambos; si falta uno, limpiar huérfanos y forzar SSO.
+    if (savedSession && accessToken) {
       isAuthenticated.value = true;
       const savedUser = localStorage.getItem('currentUser');
       if (savedUser) {
-        currentUser.value = JSON.parse(savedUser);
+        try {
+          currentUser.value = JSON.parse(savedUser);
+        } catch {
+          clearSession();
+        }
       }
+    } else if (savedSession || accessToken) {
+      clearSession();
     }
 
     try {

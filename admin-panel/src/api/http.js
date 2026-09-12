@@ -36,6 +36,15 @@ http.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry && !skipRefresh) {
       originalRequest._retry = true;
       const refreshToken = localStorage.getItem('refreshToken');
+      const clearAndReload = () => {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('admin_session');
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('ssoAccessToken');
+        localStorage.removeItem('ssoIdToken');
+        window.location.assign('/');
+      };
       if (refreshToken) {
         try {
           const res = await http.post('/api/auth/refresh', { refreshToken });
@@ -45,14 +54,10 @@ http.interceptors.response.use(
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
           return http(originalRequest);
         } catch {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          localStorage.removeItem('admin_session');
-          localStorage.removeItem('currentUser');
-          localStorage.removeItem('ssoAccessToken');
-          localStorage.removeItem('ssoIdToken');
-          window.location.assign('/');
+          clearAndReload();
         }
+      } else {
+        clearAndReload();
       }
     }
     return Promise.reject(error);
