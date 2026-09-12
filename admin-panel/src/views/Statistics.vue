@@ -301,7 +301,7 @@ const chartBase: ApexOptions = {
   chart: {
     background: 'transparent',
     toolbar: { show: false },
-    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+    fontFamily: 'ui-sans-serif, system-ui, sans-serif',
   },
   theme: { mode: 'dark' },
   grid: {

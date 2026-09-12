@@ -2,12 +2,13 @@
   <div class="flex min-h-screen overflow-x-hidden" style="background: var(--app-bg)">
     <FeedbackModal />
 
-    <LoadingOverlay v-if="isInitializing && !isAuthCallbackRoute && !isRedirectingToSso" />
-
-    <div
-      v-else-if="isRedirectingToSso && !isAuthCallbackRoute"
-      class="min-h-screen"
-      style="background: var(--app-bg)"
+    <LoadingOverlay
+      v-if="(isInitializing || isRedirectingToSso) && !isAuthCallbackRoute"
+      :message="
+        isRedirectingToSso
+          ? 'Redirigiendo al inicio de sesión corporativo…'
+          : 'Cargando panel…'
+      "
     />
 
     <router-view v-else-if="isAuthCallbackRoute" />

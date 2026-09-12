@@ -1,8 +1,8 @@
 <template>
-  <!-- Silencioso: tras Keycloak se intercambia el code y se va al panel sin UI intermedia.
-       Solo se muestra algo si hay error. -->
+  <!-- Tras Keycloak: spinner mientras se intercambia el code; UI solo si hay error. -->
   <div class="min-h-screen" style="background: var(--app-bg)">
-    <div v-if="error" class="flex min-h-screen items-center justify-center">
+    <LoadingOverlay v-if="!error" message="Completando inicio de sesión…" />
+    <div v-else class="flex min-h-screen items-center justify-center">
       <div class="ui-card max-w-md p-6 text-center">
         <h2 class="text-lg font-semibold text-[var(--text)]">No se pudo iniciar sesión</h2>
         <p class="mt-2 text-sm text-red-300">{{ error }}</p>
@@ -18,6 +18,7 @@
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuth } from '../composables/useAuth';
+import LoadingOverlay from '../components/presentational/LoadingOverlay.vue';
 
 const route = useRoute();
 const router = useRouter();
