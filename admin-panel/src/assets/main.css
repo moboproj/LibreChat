@@ -106,6 +106,19 @@
     box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.15);
   }
 
+  /* Native <select>: dark closed field + readable dropdown options (Windows). */
+  select.ui-input {
+    background-color: var(--surface);
+    color: var(--text);
+    color-scheme: dark;
+  }
+
+  select.ui-input option,
+  select.ui-input optgroup {
+    background-color: var(--surface);
+    color: var(--text);
+  }
+
   .ui-label {
     @apply mb-1.5 block text-xs font-medium;
     color: var(--text-muted);

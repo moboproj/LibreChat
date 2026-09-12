@@ -121,7 +121,7 @@
     <UiCard>
       <div class="mb-4 flex items-center justify-between gap-2">
         <h3 class="text-sm font-medium text-[var(--text)]">Top usuarios por tokens</h3>
-        <span class="text-xs text-[var(--text-muted)]">participaciÃ³n</span>
+        <span class="text-xs text-[var(--text-muted)]">participación</span>
       </div>
       <div v-if="summaryLoading" class="py-10 text-center text-sm text-[var(--text-muted)]">
         Cargandoâ¦
@@ -139,7 +139,7 @@
               <th class="px-2 py-2 font-medium">#</th>
               <th class="px-2 py-2 font-medium">Usuario</th>
               <th class="px-2 py-2 font-medium text-right">Tokens</th>
-              <th class="px-2 py-2 font-medium">ParticipaciÃ³n</th>
+              <th class="px-2 py-2 font-medium">Participación</th>
             </tr>
           </thead>
           <tbody>
@@ -199,7 +199,7 @@
         <button type="button" class="ui-btn-secondary w-full sm:w-auto" @click="applyUserFilter">
           Aplicar filtro
         </button>
-        <p class="text-xs text-[var(--text-muted)]">{{ total }} transacciÃ³n(es)</p>
+        <p class="text-xs text-[var(--text-muted)]">{{ total }} transacción(es)</p>
       </div>
 
       <div v-if="loading" class="py-2">

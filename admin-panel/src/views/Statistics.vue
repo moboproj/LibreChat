@@ -37,7 +37,7 @@
             "
             @click="timeRange = '7d'"
           >
-            Ãltimos 7 dÃ­as
+            Últimos 7 días
           </button>
           <button
             type="button"
@@ -49,7 +49,7 @@
             "
             @click="timeRange = '30d'"
           >
-            Ãltimos 30 dÃ­as
+            Últimos 30 días
           </button>
         </div>
       </div>
@@ -86,7 +86,7 @@
       <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <UiCard>
           <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-sm font-medium text-[var(--text)]">Mensajes por dÃ­a</h2>
+            <h2 class="text-sm font-medium text-[var(--text)]">Mensajes por día</h2>
             <span class="text-xs text-[var(--text-muted)]">Spline area Â· {{ rangeLabel }}</span>
           </div>
           <div class="h-64 w-full">
@@ -103,7 +103,7 @@
 
         <UiCard>
           <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-sm font-medium text-[var(--text)]">Usuarios activos / dÃ­a</h2>
+            <h2 class="text-sm font-medium text-[var(--text)]">Usuarios activos / día</h2>
             <span class="text-xs text-[var(--text-muted)]">Barras Â· {{ rangeLabel }}</span>
           </div>
           <div class="h-64 w-full">
@@ -195,7 +195,7 @@
                 <th class="px-2 py-2 font-medium">Usuario</th>
                 <th class="px-2 py-2 font-medium">Email</th>
                 <th class="px-2 py-2 font-medium text-right">Tokens</th>
-                <th class="px-2 py-2 font-medium">ParticipaciÃ³n</th>
+                <th class="px-2 py-2 font-medium">Participación</th>
               </tr>
             </thead>
             <tbody>
@@ -262,7 +262,7 @@ const {
 } = useAdminStats();
 
 const rangeLabel = computed(() =>
-  timeRange.value === '7d' ? 'Ãºltimos 7 dÃ­as' : 'Ãºltimos 30 dÃ­as',
+  timeRange.value === '7d' ? 'últimos 7 días' : 'últimos 30 días',
 );
 
 const kpiCards = computed(() => [
@@ -270,14 +270,14 @@ const kpiCards = computed(() => [
     icon: 'ð¬',
     label: 'Mensajes Totales',
     value: fmt(stats.value.totals.totalMessages),
-    sub: `+${fmt(stats.value.messagesLast7Days)} Ãºltimos 7 dÃ­as`,
+    sub: `+${fmt(stats.value.messagesLast7Days)} últimos 7 días`,
     subClass: 'text-slate-400',
   },
   {
     icon: 'ð¥',
     label: 'Usuarios',
     value: fmt(stats.value.totals.totalUsers),
-    sub: `+${fmt(stats.value.newUsersLast30Days)} Ãºltimos 30 dÃ­as`,
+    sub: `+${fmt(stats.value.newUsersLast30Days)} últimos 30 días`,
     subClass: 'text-emerald-400',
   },
   {
