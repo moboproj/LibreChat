@@ -78,8 +78,10 @@ router.beforeEach((to) => {
   if (!to.meta.requiresAuth) return true;
   const token = localStorage.getItem('accessToken');
   const session = localStorage.getItem('admin_session');
-  if (token || session) return true;
-  return { path: '/', query: { login: '1' } };
+  if (token && session) return true;
+  // La raíz la maneja App.vue (SSO). No redirigir / → /?login=1 (bucle / pantalla vacía).
+  if (to.path === '/') return true;
+  return { path: '/' };
 });
 
 export default router;

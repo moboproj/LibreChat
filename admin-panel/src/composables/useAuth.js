@@ -72,6 +72,13 @@ export function useAuth() {
     } finally {
       isInitializing.value = false;
     }
+
+    // No depender solo del watch: tras config, si SSO está on y no hay sesión, ir ya.
+    if (openidEnabled.value && !isAuthenticated.value && !isRedirectingToSso.value) {
+      if (typeof window === 'undefined' || !window.location.pathname.startsWith('/auth/')) {
+        startOpenIdLogin();
+      }
+    }
   }
 
   function startOpenIdLogin() {

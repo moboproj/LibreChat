@@ -3,9 +3,14 @@
     <FeedbackModal />
 
     <LoadingOverlay
-      v-if="(isInitializing || isRedirectingToSso) && !isAuthCallbackRoute"
+      v-if="
+        !isAuthCallbackRoute &&
+        (isInitializing ||
+          isRedirectingToSso ||
+          (openidEnabled && !isAuthenticated && requiresAuth))
+      "
       :message="
-        isRedirectingToSso
+        isRedirectingToSso || (openidEnabled && !isAuthenticated && !isInitializing)
           ? 'Redirigiendo al inicio de sesión corporativo…'
           : 'Cargando panel…'
       "
@@ -141,8 +146,6 @@ watch(
 );
 
 // Igual que ti-promos SSO_ONLY: sin botón; redirect directo a Keycloak.
-// Nunca iniciar SSO en /auth/* ni si ya hay sesión autenticada en memoria.
-// No mirar localStorage aquí: un token huérfano dejaba la UI en blanco sin redirect.
 watch(
   [isInitializing, isAuthenticated, openidEnabled, isAuthCallbackRoute],
   ([initializing, authenticated, ssoOn, onCallback]) => {
@@ -151,6 +154,7 @@ watch(
     if (typeof window !== 'undefined' && window.location.pathname.startsWith('/auth/')) return;
     startOpenIdLogin();
   },
+  { flush: 'post' },
 );
 
 onMounted(() => {
