@@ -9,7 +9,7 @@
           AI Analytics Dashboard
         </h1>
         <p class="mt-1 text-sm text-[var(--text-muted)]">
-          Monitoreo de uso del chat con IA ·
+          Monitoreo de uso del chat con IA Â·
           {{ usingMock ? 'datos mock' : 'datos en vivo (/api/stats)' }}
         </p>
       </div>
@@ -37,7 +37,7 @@
             "
             @click="timeRange = '7d'"
           >
-            Últimos 7 días
+            Ãltimos 7 dÃ­as
           </button>
           <button
             type="button"
@@ -49,7 +49,7 @@
             "
             @click="timeRange = '30d'"
           >
-            Últimos 30 días
+            Ãltimos 30 dÃ­as
           </button>
         </div>
       </div>
@@ -68,6 +68,7 @@
     </UiCard>
 
     <template v-else>
+      <!-- KPI row -->
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <UiCard v-for="card in kpiCards" :key="card.label">
           <div class="flex items-start justify-between gap-2">
@@ -81,24 +82,39 @@
         </UiCard>
       </div>
 
+      <!-- Mid charts 50/50 -->
       <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <UiCard>
           <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-sm font-medium text-[var(--text)]">Mensajes por día</h2>
-            <span class="text-xs text-[var(--text-muted)]">Área · {{ rangeLabel }}</span>
+            <h2 class="text-sm font-medium text-[var(--text)]">Mensajes por dÃ­a</h2>
+            <span class="text-xs text-[var(--text-muted)]">Spline area Â· {{ rangeLabel }}</span>
           </div>
           <div class="h-64 w-full">
-            <AdminChart type="line" :data="messagesAreaData" :options="areaOptions" />
+            <ApexChartSafe
+              type="area"
+              height="100%"
+              width="100%"
+              :options="messagesAreaOptions"
+              :series="messagesAreaSeries"
+              :fallback="messagesAreaFallback"
+            />
           </div>
         </UiCard>
 
         <UiCard>
           <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-sm font-medium text-[var(--text)]">Usuarios activos / día</h2>
-            <span class="text-xs text-[var(--text-muted)]">Barras · {{ rangeLabel }}</span>
+            <h2 class="text-sm font-medium text-[var(--text)]">Usuarios activos / dÃ­a</h2>
+            <span class="text-xs text-[var(--text-muted)]">Barras Â· {{ rangeLabel }}</span>
           </div>
           <div class="h-64 w-full">
-            <AdminChart type="bar" :data="activeUsersBarData" />
+            <ApexChartSafe
+              type="bar"
+              height="100%"
+              width="100%"
+              :options="activeUsersBarOptions"
+              :series="activeUsersBarSeries"
+              :fallback="activeUsersBarFallback"
+            />
           </div>
         </UiCard>
       </div>
@@ -110,7 +126,14 @@
             <span class="text-xs text-[var(--text-muted)]">Donut</span>
           </div>
           <div class="h-64 w-full">
-            <AdminChart type="doughnut" :data="modelDonutData" :options="donutOptions" />
+            <ApexChartSafe
+              type="donut"
+              height="100%"
+              width="100%"
+              :options="modelDonutOptions"
+              :series="modelDonutSeries"
+              :fallback="modelDonutFallback"
+            />
           </div>
         </UiCard>
 
@@ -120,17 +143,31 @@
             <span class="text-xs text-[var(--text-muted)]">Barras horizontales</span>
           </div>
           <div class="h-64 w-full">
-            <AdminChart type="bar" :data="endpointBarData" :options="horizontalBarOptions" />
+            <ApexChartSafe
+              type="bar"
+              height="100%"
+              width="100%"
+              :options="endpointBarOptions"
+              :series="endpointBarSeries"
+              :fallback="endpointBarFallback"
+            />
           </div>
         </UiCard>
 
         <UiCard>
           <div class="mb-3 flex items-center justify-between">
             <h2 class="text-sm font-medium text-[var(--text)]">Tokens por tipo</h2>
-            <span class="text-xs text-[var(--text-muted)]">Apiladas · prompt vs completion</span>
+            <span class="text-xs text-[var(--text-muted)]">Apiladas Â· prompt vs completion</span>
           </div>
           <div class="h-64 w-full">
-            <AdminChart type="bar" :data="tokensStackedData" :options="stackedBarOptions" />
+            <ApexChartSafe
+              type="bar"
+              height="100%"
+              width="100%"
+              :options="tokensStackedOptions"
+              :series="tokensStackedSeries"
+              :fallback="tokensStackedFallback"
+            />
           </div>
         </UiCard>
       </div>
@@ -158,7 +195,7 @@
                 <th class="px-2 py-2 font-medium">Usuario</th>
                 <th class="px-2 py-2 font-medium">Email</th>
                 <th class="px-2 py-2 font-medium text-right">Tokens</th>
-                <th class="px-2 py-2 font-medium">Participación</th>
+                <th class="px-2 py-2 font-medium">ParticipaciÃ³n</th>
               </tr>
             </thead>
             <tbody>
@@ -169,9 +206,9 @@
               >
                 <td class="px-2 py-3 tabular-nums text-slate-500">{{ i + 1 }}</td>
                 <td class="px-2 py-3 font-medium text-slate-100">
-                  {{ user.name || '—' }}
+                  {{ user.name || 'â' }}
                 </td>
-                <td class="px-2 py-3 text-slate-400">{{ user.email || '—' }}</td>
+                <td class="px-2 py-3 text-slate-400">{{ user.email || 'â' }}</td>
                 <td class="px-2 py-3 text-right tabular-nums text-slate-100">
                   {{ fmtCompact(user.totalTokens) }}
                 </td>
@@ -199,9 +236,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import type { ApexOptions } from 'apexcharts';
 import type { ChartData, ChartOptions } from 'chart.js';
 import { useAdminStats } from '@/composables/useAdminStats';
-import AdminChart from '@/components/ui/AdminChart.vue';
+import ApexChartSafe from '@/components/ui/ApexChartSafe.vue';
 import UiCard from '@/components/ui/UiCard.vue';
 import CardSkeleton from '@/components/ui/CardSkeleton.vue';
 
@@ -224,40 +262,40 @@ const {
 } = useAdminStats();
 
 const rangeLabel = computed(() =>
-  timeRange.value === '7d' ? 'últimos 7 días' : 'últimos 30 días',
+  timeRange.value === '7d' ? 'Ãºltimos 7 dÃ­as' : 'Ãºltimos 30 dÃ­as',
 );
 
 const kpiCards = computed(() => [
   {
-    icon: '💬',
+    icon: 'ð¬',
     label: 'Mensajes Totales',
     value: fmt(stats.value.totals.totalMessages),
-    sub: `+${fmt(stats.value.messagesLast7Days)} últimos 7 días`,
+    sub: `+${fmt(stats.value.messagesLast7Days)} Ãºltimos 7 dÃ­as`,
     subClass: 'text-slate-400',
   },
   {
-    icon: '👥',
+    icon: 'ð¥',
     label: 'Usuarios',
     value: fmt(stats.value.totals.totalUsers),
-    sub: `+${fmt(stats.value.newUsersLast30Days)} últimos 30 días`,
+    sub: `+${fmt(stats.value.newUsersLast30Days)} Ãºltimos 30 dÃ­as`,
     subClass: 'text-emerald-400',
   },
   {
-    icon: '🗂️',
+    icon: 'ðï¸',
     label: 'Conversaciones',
     value: fmt(stats.value.totals.totalConversations),
     sub: `${avgMsgPerConv.value} mensajes/conv`,
     subClass: 'text-slate-400',
   },
   {
-    icon: '🔢',
+    icon: 'ð¢',
     label: 'Tokens Consumidos',
     value: fmtCompact(totalTokens.value),
-    sub: `${fmtCompact(promptTokens.value)} prompt · ${fmtCompact(completionTokens.value)} completion`,
+    sub: `${fmtCompact(promptTokens.value)} prompt Â· ${fmtCompact(completionTokens.value)} completion`,
     subClass: 'text-slate-400',
   },
   {
-    icon: '🤖',
+    icon: 'ð¤',
     label: 'Agentes Activos',
     value: fmt(stats.value.totals.totalAgents),
     sub: `${fmt(stats.value.totals.totalFiles)} archivos subidos`,
@@ -265,98 +303,244 @@ const kpiCards = computed(() => [
   },
 ]);
 
-const areaOptions: ChartOptions<'line'> = {
-  elements: { line: { tension: 0.35 } },
-  plugins: { legend: { display: false } },
-};
-
-const donutOptions: ChartOptions<'doughnut'> = {
-  cutout: '68%',
-  plugins: { legend: { position: 'bottom' } },
-};
-
-const horizontalBarOptions: ChartOptions<'bar'> = {
-  indexAxis: 'y',
-  plugins: { legend: { display: false } },
-};
-
-const stackedBarOptions: ChartOptions<'bar'> = {
-  scales: {
-    x: { stacked: true },
-    y: {
-      stacked: true,
-      ticks: {
-        callback: (value) => fmtCompact(Number(value)),
-      },
-    },
+const chartBase: ApexOptions = {
+  chart: {
+    background: 'transparent',
+    toolbar: { show: false },
+    fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+  },
+  theme: { mode: 'dark' },
+  grid: {
+    borderColor: '#1e293b',
+    strokeDashArray: 3,
+  },
+  dataLabels: { enabled: false },
+  legend: {
+    labels: { colors: '#94a3b8' },
+    fontSize: '11px',
+  },
+  tooltip: { theme: 'dark' },
+  xaxis: {
+    labels: { style: { colors: '#64748b', fontSize: '10px' } },
+    axisBorder: { show: false },
+    axisTicks: { show: false },
+  },
+  yaxis: {
+    labels: { style: { colors: '#64748b', fontSize: '10px' } },
   },
 };
 
-const messagesAreaData = computed<ChartData<'line'>>(() => ({
-  labels: slicedDays.value.messages.map((d) => d._id.slice(5)),
-  datasets: [
-    {
-      label: 'Mensajes',
-      data: slicedDays.value.messages.map((d) => d.count),
-      borderColor: '#38bdf8',
-      backgroundColor: 'rgba(56, 189, 248, 0.25)',
-      fill: true,
-      pointRadius: 0,
-      borderWidth: 2,
+const messagesAreaSeries = computed(() => [
+  { name: 'Mensajes', data: slicedDays.value.messages.map((d) => d.count) },
+]);
+
+const messagesAreaOptions = computed<ApexOptions>(() => ({
+  ...chartBase,
+  chart: { ...chartBase.chart, type: 'area', sparkline: { enabled: false } },
+  stroke: { curve: 'smooth', width: 2 },
+  fill: {
+    type: 'gradient',
+    gradient: {
+      shadeIntensity: 0.4,
+      opacityFrom: 0.45,
+      opacityTo: 0.05,
+      stops: [0, 90, 100],
     },
-  ],
+  },
+  colors: ['#38bdf8'],
+  xaxis: {
+    ...chartBase.xaxis,
+    categories: slicedDays.value.messages.map((d) => d._id.slice(5)),
+  },
 }));
 
-const activeUsersBarData = computed<ChartData<'bar'>>(() => ({
-  labels: slicedDays.value.active.map((d) => d._id.slice(5)),
-  datasets: [
-    {
-      label: 'Usuarios activos',
-      data: slicedDays.value.active.map((d) => d.activeUsers),
-      backgroundColor: '#818cf8',
-      borderRadius: 3,
-    },
-  ],
+const activeUsersBarSeries = computed(() => [
+  {
+    name: 'Usuarios activos',
+    data: slicedDays.value.active.map((d) => d.activeUsers),
+  },
+]);
+
+const activeUsersBarOptions = computed<ApexOptions>(() => ({
+  ...chartBase,
+  chart: { ...chartBase.chart, type: 'bar' },
+  plotOptions: { bar: { borderRadius: 3, columnWidth: '55%' } },
+  colors: ['#818cf8'],
+  xaxis: {
+    ...chartBase.xaxis,
+    categories: slicedDays.value.active.map((d) => d._id.slice(5)),
+  },
 }));
 
-const modelDonutData = computed<ChartData<'doughnut'>>(() => ({
+const modelDonutSeries = computed(() =>
+  stats.value.messagesByModel.map((m) => m.count),
+);
+
+const modelDonutOptions = computed<ApexOptions>(() => ({
+  ...chartBase,
   labels: stats.value.messagesByModel.map((m) => m._id || 'unknown'),
-  datasets: [
-    {
-      data: stats.value.messagesByModel.map((m) => m.count),
-      backgroundColor: ['#38bdf8', '#34d399', '#fbbf24', '#f87171', '#a78bfa'],
-      borderWidth: 0,
+  colors: ['#38bdf8', '#34d399', '#fbbf24', '#f87171', '#a78bfa'],
+  stroke: { width: 0 },
+  plotOptions: {
+    pie: {
+      donut: {
+        size: '68%',
+        labels: {
+          show: true,
+          name: { color: '#cbd5e1', fontSize: '12px' },
+          value: { color: '#f8fafc', fontSize: '16px', fontWeight: 600 },
+          total: {
+            show: true,
+            label: 'Total',
+            color: '#94a3b8',
+            formatter: () =>
+              fmt(stats.value.messagesByModel.reduce((s, m) => s + m.count, 0)),
+          },
+        },
+      },
     },
-  ],
+  },
+  legend: { ...chartBase.legend, position: 'bottom' },
 }));
 
-const endpointBarData = computed<ChartData<'bar'>>(() => ({
-  labels: stats.value.messagesByEndpoint.map((e) => e._id || 'unknown'),
-  datasets: [
-    {
-      label: 'Mensajes',
-      data: stats.value.messagesByEndpoint.map((e) => e.count),
-      backgroundColor: '#2dd4bf',
-      borderRadius: 3,
-    },
-  ],
+const endpointBarSeries = computed(() => [
+  {
+    name: 'Mensajes',
+    data: stats.value.messagesByEndpoint.map((e) => e.count),
+  },
+]);
+
+const endpointBarOptions = computed<ApexOptions>(() => ({
+  ...chartBase,
+  chart: { ...chartBase.chart, type: 'bar' },
+  plotOptions: { bar: { horizontal: true, borderRadius: 3, barHeight: '55%' } },
+  colors: ['#2dd4bf'],
+  xaxis: {
+    ...chartBase.xaxis,
+    categories: stats.value.messagesByEndpoint.map((e) => e._id || 'unknown'),
+  },
 }));
 
-const tokensStackedData = computed<ChartData<'bar'>>(() => ({
-  labels: ['Tokens'],
-  datasets: [
-    {
-      label: 'Prompt (entrada)',
-      data: [promptTokens.value],
-      backgroundColor: '#60a5fa',
-      borderRadius: 4,
+const tokensStackedSeries = computed(() => [
+  { name: 'Prompt (entrada)', data: [promptTokens.value] },
+  { name: 'Completion (salida)', data: [completionTokens.value] },
+]);
+
+const tokensStackedOptions = computed<ApexOptions>(() => ({
+  ...chartBase,
+  chart: { ...chartBase.chart, type: 'bar', stacked: true },
+  plotOptions: { bar: { horizontal: false, borderRadius: 4, columnWidth: '35%' } },
+  colors: ['#60a5fa', '#c084fc'],
+  xaxis: { ...chartBase.xaxis, categories: ['Tokens'] },
+  yaxis: {
+    ...chartBase.yaxis,
+    labels: {
+      style: { colors: '#64748b', fontSize: '10px' },
+      formatter: (v: number) => fmtCompact(v),
     },
-    {
-      label: 'Completion (salida)',
-      data: [completionTokens.value],
-      backgroundColor: '#c084fc',
-      borderRadius: 4,
-    },
-  ],
+  },
+}));
+
+const lineFallbackOpts: ChartOptions<'line'> = {
+  elements: { line: { tension: 0.35 } },
+  plugins: { legend: { display: false } },
+};
+const donutFallbackOpts: ChartOptions<'doughnut'> = {
+  cutout: '68%',
+  plugins: { legend: { position: 'bottom' } },
+};
+const horizontalFallbackOpts: ChartOptions<'bar'> = {
+  indexAxis: 'y',
+  plugins: { legend: { display: false } },
+};
+const stackedFallbackOpts: ChartOptions<'bar'> = {
+  scales: { x: { stacked: true }, y: { stacked: true } },
+};
+
+const messagesAreaFallback = computed(() => ({
+  type: 'line' as const,
+  options: lineFallbackOpts,
+  data: {
+    labels: slicedDays.value.messages.map((d) => d._id.slice(5)),
+    datasets: [
+      {
+        label: 'Mensajes',
+        data: slicedDays.value.messages.map((d) => d.count),
+        borderColor: '#38bdf8',
+        backgroundColor: 'rgba(56, 189, 248, 0.25)',
+        fill: true,
+        pointRadius: 0,
+        borderWidth: 2,
+      },
+    ],
+  } satisfies ChartData<'line'>,
+}));
+
+const activeUsersBarFallback = computed(() => ({
+  type: 'bar' as const,
+  data: {
+    labels: slicedDays.value.active.map((d) => d._id.slice(5)),
+    datasets: [
+      {
+        label: 'Usuarios activos',
+        data: slicedDays.value.active.map((d) => d.activeUsers),
+        backgroundColor: '#818cf8',
+        borderRadius: 3,
+      },
+    ],
+  } satisfies ChartData<'bar'>,
+}));
+
+const modelDonutFallback = computed(() => ({
+  type: 'doughnut' as const,
+  options: donutFallbackOpts,
+  data: {
+    labels: stats.value.messagesByModel.map((m) => m._id || 'unknown'),
+    datasets: [
+      {
+        data: stats.value.messagesByModel.map((m) => m.count),
+        backgroundColor: ['#38bdf8', '#34d399', '#fbbf24', '#f87171', '#a78bfa'],
+        borderWidth: 0,
+      },
+    ],
+  } satisfies ChartData<'doughnut'>,
+}));
+
+const endpointBarFallback = computed(() => ({
+  type: 'bar' as const,
+  options: horizontalFallbackOpts,
+  data: {
+    labels: stats.value.messagesByEndpoint.map((e) => e._id || 'unknown'),
+    datasets: [
+      {
+        label: 'Mensajes',
+        data: stats.value.messagesByEndpoint.map((e) => e.count),
+        backgroundColor: '#2dd4bf',
+        borderRadius: 3,
+      },
+    ],
+  } satisfies ChartData<'bar'>,
+}));
+
+const tokensStackedFallback = computed(() => ({
+  type: 'bar' as const,
+  options: stackedFallbackOpts,
+  data: {
+    labels: ['Tokens'],
+    datasets: [
+      {
+        label: 'Prompt (entrada)',
+        data: [promptTokens.value],
+        backgroundColor: '#60a5fa',
+        borderRadius: 4,
+      },
+      {
+        label: 'Completion (salida)',
+        data: [completionTokens.value],
+        backgroundColor: '#c084fc',
+        borderRadius: 4,
+      },
+    ],
+  } satisfies ChartData<'bar'>,
 }));
 </script>

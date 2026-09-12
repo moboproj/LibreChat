@@ -5,7 +5,7 @@
         <p class="text-xs uppercase tracking-wider text-[var(--text-muted)]">Uso</p>
         <h2 class="text-xl font-semibold text-[var(--text)]">Tokens / Transacciones</h2>
         <p class="text-sm text-[var(--text-muted)]">
-          Resumen y detalle de consumo · solo lectura
+          Resumen y detalle de consumo Â· solo lectura
         </p>
       </div>
       <div class="inline-flex rounded-lg border p-1" style="border-color: var(--border)">
@@ -30,19 +30,19 @@
       <UiCard padding="sm">
         <p class="text-[10px] uppercase text-[var(--text-muted)]">Tokens</p>
         <p class="text-xl font-semibold text-[var(--text)]">
-          {{ summaryLoading ? '…' : formatNumber(summary.totals.totalTokens) }}
+          {{ summaryLoading ? 'â¦' : formatNumber(summary.totals.totalTokens) }}
         </p>
       </UiCard>
       <UiCard padding="sm">
         <p class="text-[10px] uppercase text-[var(--text-muted)]">Transacciones</p>
         <p class="text-xl font-semibold text-[var(--text)]">
-          {{ summaryLoading ? '…' : formatNumber(summary.totals.count) }}
+          {{ summaryLoading ? 'â¦' : formatNumber(summary.totals.count) }}
         </p>
       </UiCard>
       <UiCard padding="sm">
         <p class="text-[10px] uppercase text-[var(--text-muted)]">Modelos</p>
         <p class="text-xl font-semibold text-[var(--text)]">
-          {{ summaryLoading ? '…' : summary.byModel.length }}
+          {{ summaryLoading ? 'â¦' : summary.byModel.length }}
         </p>
       </UiCard>
     </div>
@@ -54,16 +54,20 @@
           <span class="text-xs text-[var(--text-muted)]">Apiladas</span>
         </div>
         <div v-if="summaryLoading" class="py-16 text-center text-sm text-[var(--text-muted)]">
-          Cargando…
+          Cargandoâ¦
         </div>
-        <div
-          v-else-if="!hasTokenSeries"
-          class="py-16 text-center text-sm text-[var(--text-muted)]"
-        >
+        <div v-else-if="!tokensStackedSeries.length" class="py-16 text-center text-sm text-[var(--text-muted)]">
           Sin datos
         </div>
         <div v-else class="h-56 w-full">
-          <AdminChart type="bar" :data="tokensStackedData" :options="stackedBarOptions" />
+          <ApexChartSafe
+            type="bar"
+            height="100%"
+            width="100%"
+            :options="tokensStackedOptions"
+            :series="tokensStackedSeries"
+            :fallback="tokensStackedFallback"
+          />
         </div>
       </UiCard>
 
@@ -73,16 +77,20 @@
           <span class="text-xs text-[var(--text-muted)]">Donut</span>
         </div>
         <div v-if="summaryLoading" class="py-16 text-center text-sm text-[var(--text-muted)]">
-          Cargando…
+          Cargandoâ¦
         </div>
-        <div
-          v-else-if="!modelDonutData.datasets[0]?.data?.length"
-          class="py-16 text-center text-sm text-[var(--text-muted)]"
-        >
+        <div v-else-if="!modelDonutSeries.length" class="py-16 text-center text-sm text-[var(--text-muted)]">
           Sin datos
         </div>
         <div v-else class="h-56 w-full">
-          <AdminChart type="doughnut" :data="modelDonutData" :options="donutOptions" />
+          <ApexChartSafe
+            type="donut"
+            height="100%"
+            width="100%"
+            :options="modelDonutOptions"
+            :series="modelDonutSeries"
+            :fallback="modelDonutFallback"
+          />
         </div>
       </UiCard>
 
@@ -92,16 +100,20 @@
           <span class="text-xs text-[var(--text-muted)]">Barras</span>
         </div>
         <div v-if="summaryLoading" class="py-16 text-center text-sm text-[var(--text-muted)]">
-          Cargando…
+          Cargandoâ¦
         </div>
-        <div
-          v-else-if="!modelBarData.datasets[0]?.data?.length"
-          class="py-16 text-center text-sm text-[var(--text-muted)]"
-        >
+        <div v-else-if="!modelBarSeries[0]?.data?.length" class="py-16 text-center text-sm text-[var(--text-muted)]">
           Sin datos
         </div>
         <div v-else class="h-56 w-full">
-          <AdminChart type="bar" :data="modelBarData" :options="horizontalBarOptions" />
+          <ApexChartSafe
+            type="bar"
+            height="100%"
+            width="100%"
+            :options="modelBarOptions"
+            :series="modelBarSeries"
+            :fallback="modelBarFallback"
+          />
         </div>
       </UiCard>
     </div>
@@ -109,10 +121,10 @@
     <UiCard>
       <div class="mb-4 flex items-center justify-between gap-2">
         <h3 class="text-sm font-medium text-[var(--text)]">Top usuarios por tokens</h3>
-        <span class="text-xs text-[var(--text-muted)]">participación</span>
+        <span class="text-xs text-[var(--text-muted)]">participaciÃ³n</span>
       </div>
       <div v-if="summaryLoading" class="py-10 text-center text-sm text-[var(--text-muted)]">
-        Cargando…
+        Cargandoâ¦
       </div>
       <div v-else-if="!summary.byUser.length" class="py-10 text-center text-sm text-[var(--text-muted)]">
         Sin datos de consumo por usuario
@@ -127,7 +139,7 @@
               <th class="px-2 py-2 font-medium">#</th>
               <th class="px-2 py-2 font-medium">Usuario</th>
               <th class="px-2 py-2 font-medium text-right">Tokens</th>
-              <th class="px-2 py-2 font-medium">Participación</th>
+              <th class="px-2 py-2 font-medium">ParticipaciÃ³n</th>
             </tr>
           </thead>
           <tbody>
@@ -175,19 +187,19 @@
           v-model="searchQuery"
           class="ui-input sm:max-w-sm"
           type="search"
-          placeholder="Buscar model, conversationId, tokenType…"
+          placeholder="Buscar model, conversationId, tokenTypeâ¦"
         />
         <input
           v-model="userFilter"
           class="ui-input sm:max-w-xs"
           type="text"
-          placeholder="Filtrar por user id…"
+          placeholder="Filtrar por user idâ¦"
           @keyup.enter="applyUserFilter"
         />
         <button type="button" class="ui-btn-secondary w-full sm:w-auto" @click="applyUserFilter">
           Aplicar filtro
         </button>
-        <p class="text-xs text-[var(--text-muted)]">{{ total }} transacción(es)</p>
+        <p class="text-xs text-[var(--text-muted)]">{{ total }} transacciÃ³n(es)</p>
       </div>
 
       <div v-if="loading" class="py-2">
@@ -219,10 +231,10 @@
                 style="border-color: var(--border)"
               >
                 <td class="max-w-[180px] truncate px-2 py-3 text-[var(--text)]">
-                  {{ tx.userEmail || tx.userName || tx.user || '—' }}
+                  {{ tx.userEmail || tx.userName || tx.user || 'â' }}
                 </td>
-                <td class="px-2 py-3 text-[var(--text-muted)]">{{ tx.tokenType || '—' }}</td>
-                <td class="px-2 py-3 text-[var(--text-muted)]">{{ tx.model || '—' }}</td>
+                <td class="px-2 py-3 text-[var(--text-muted)]">{{ tx.tokenType || 'â' }}</td>
+                <td class="px-2 py-3 text-[var(--text-muted)]">{{ tx.model || 'â' }}</td>
                 <td class="px-2 py-3 font-mono text-[var(--text)]">
                   {{ formatNumber(Math.abs(tx.rawAmount || tx.tokenValue || 0)) }}
                 </td>
@@ -251,7 +263,7 @@
 <script setup>
 import { computed, onMounted } from 'vue';
 import { useUsage } from '../composables/useUsage';
-import AdminChart from '../components/ui/AdminChart.vue';
+import ApexChartSafe from '../components/ui/ApexChartSafe.vue';
 import UiCard from '../components/ui/UiCard.vue';
 import PaginationBar from '../components/ui/PaginationBar.vue';
 import TableSkeleton from '../components/ui/TableSkeleton.vue';
@@ -297,20 +309,30 @@ const maxUserTokens = computed(() =>
   Math.max(0, ...summary.value.byUser.map((row) => Number(row.totalTokens || 0))),
 );
 
-const donutOptions = {
-  cutout: '68%',
-  plugins: { legend: { position: 'bottom' } },
-};
-
-const horizontalBarOptions = {
-  indexAxis: 'y',
-  plugins: { legend: { display: false } },
-};
-
-const stackedBarOptions = {
-  scales: {
-    x: { stacked: true },
-    y: { stacked: true },
+const chartBase = {
+  chart: {
+    background: 'transparent',
+    toolbar: { show: false },
+    fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+  },
+  theme: { mode: 'dark' },
+  grid: {
+    borderColor: '#334155',
+    strokeDashArray: 3,
+  },
+  dataLabels: { enabled: false },
+  legend: {
+    labels: { colors: '#94a3b8' },
+    fontSize: '11px',
+  },
+  tooltip: { theme: 'dark' },
+  xaxis: {
+    labels: { style: { colors: '#64748b', fontSize: '10px' } },
+    axisBorder: { show: false },
+    axisTicks: { show: false },
+  },
+  yaxis: {
+    labels: { style: { colors: '#64748b', fontSize: '10px' } },
   },
 };
 
@@ -327,12 +349,86 @@ const tokensByKey = computed(() => {
   };
 });
 
-const hasTokenSeries = computed(() => {
+const tokensStackedSeries = computed(() => {
   const { prompt, completion, other } = tokensByKey.value;
-  return Boolean(prompt || completion || other);
+  if (!prompt && !completion && !other) return [];
+  const series = [
+    { name: 'Prompt', data: [prompt] },
+    { name: 'Completion', data: [completion] },
+  ];
+  if (other) series.push({ name: 'Otros', data: [other] });
+  return series;
 });
 
-const tokensStackedData = computed(() => {
+const tokensStackedOptions = computed(() => ({
+  ...chartBase,
+  chart: { ...chartBase.chart, type: 'bar', stacked: true },
+  plotOptions: { bar: { horizontal: false, borderRadius: 4, columnWidth: '35%' } },
+  colors: ['#60a5fa', '#c084fc', '#94a3b8'],
+  xaxis: { ...chartBase.xaxis, categories: ['Tokens'] },
+  yaxis: {
+    ...chartBase.yaxis,
+    labels: {
+      style: { colors: '#64748b', fontSize: '10px' },
+      formatter: (v) => Number(v || 0).toLocaleString(),
+    },
+  },
+}));
+
+const modelDonutSeries = computed(() =>
+  (summary.value.byModel || []).slice(0, 8).map((row) => Number(row.total || 0)),
+);
+
+const modelDonutOptions = computed(() => ({
+  ...chartBase,
+  labels: (summary.value.byModel || []).slice(0, 8).map((row) => row._id || 'unknown'),
+  colors: ['#38bdf8', '#34d399', '#fbbf24', '#f87171', '#a78bfa', '#2dd4bf', '#fb7185', '#94a3b8'],
+  stroke: { width: 0 },
+  plotOptions: {
+    pie: {
+      donut: {
+        size: '68%',
+        labels: {
+          show: true,
+          name: { color: '#cbd5e1', fontSize: '12px' },
+          value: { color: '#f8fafc', fontSize: '16px', fontWeight: 600 },
+          total: {
+            show: true,
+            label: 'Total',
+            color: '#94a3b8',
+            formatter: () =>
+              formatNumber(
+                (summary.value.byModel || [])
+                  .slice(0, 8)
+                  .reduce((sum, row) => sum + Number(row.total || 0), 0),
+              ),
+          },
+        },
+      },
+    },
+  },
+  legend: { ...chartBase.legend, position: 'bottom' },
+}));
+
+const modelBarSeries = computed(() => [
+  {
+    name: 'Tokens',
+    data: (summary.value.byModel || []).slice(0, 8).map((row) => Number(row.total || 0)),
+  },
+]);
+
+const modelBarOptions = computed(() => ({
+  ...chartBase,
+  chart: { ...chartBase.chart, type: 'bar' },
+  plotOptions: { bar: { horizontal: true, borderRadius: 3, barHeight: '55%' } },
+  colors: ['#2dd4bf'],
+  xaxis: {
+    ...chartBase.xaxis,
+    categories: (summary.value.byModel || []).slice(0, 8).map((row) => row._id || 'unknown'),
+  },
+}));
+
+const tokensStackedFallback = computed(() => {
   const { prompt, completion, other } = tokensByKey.value;
   const datasets = [
     { label: 'Prompt', data: [prompt], backgroundColor: '#60a5fa', borderRadius: 4 },
@@ -341,39 +437,51 @@ const tokensStackedData = computed(() => {
   if (other) {
     datasets.push({ label: 'Otros', data: [other], backgroundColor: '#94a3b8', borderRadius: 4 });
   }
-  return { labels: ['Tokens'], datasets };
+  return {
+    type: 'bar',
+    options: { scales: { x: { stacked: true }, y: { stacked: true } } },
+    data: { labels: ['Tokens'], datasets },
+  };
 });
 
-const modelDonutData = computed(() => ({
-  labels: (summary.value.byModel || []).slice(0, 8).map((row) => row._id || 'unknown'),
-  datasets: [
-    {
-      data: (summary.value.byModel || []).slice(0, 8).map((row) => Number(row.total || 0)),
-      backgroundColor: [
-        '#38bdf8',
-        '#34d399',
-        '#fbbf24',
-        '#f87171',
-        '#a78bfa',
-        '#2dd4bf',
-        '#fb7185',
-        '#94a3b8',
-      ],
-      borderWidth: 0,
-    },
-  ],
+const modelDonutFallback = computed(() => ({
+  type: 'doughnut',
+  options: { cutout: '68%', plugins: { legend: { position: 'bottom' } } },
+  data: {
+    labels: (summary.value.byModel || []).slice(0, 8).map((row) => row._id || 'unknown'),
+    datasets: [
+      {
+        data: (summary.value.byModel || []).slice(0, 8).map((row) => Number(row.total || 0)),
+        backgroundColor: [
+          '#38bdf8',
+          '#34d399',
+          '#fbbf24',
+          '#f87171',
+          '#a78bfa',
+          '#2dd4bf',
+          '#fb7185',
+          '#94a3b8',
+        ],
+        borderWidth: 0,
+      },
+    ],
+  },
 }));
 
-const modelBarData = computed(() => ({
-  labels: (summary.value.byModel || []).slice(0, 8).map((row) => row._id || 'unknown'),
-  datasets: [
-    {
-      label: 'Tokens',
-      data: (summary.value.byModel || []).slice(0, 8).map((row) => Number(row.total || 0)),
-      backgroundColor: '#2dd4bf',
-      borderRadius: 3,
-    },
-  ],
+const modelBarFallback = computed(() => ({
+  type: 'bar',
+  options: { indexAxis: 'y', plugins: { legend: { display: false } } },
+  data: {
+    labels: (summary.value.byModel || []).slice(0, 8).map((row) => row._id || 'unknown'),
+    datasets: [
+      {
+        label: 'Tokens',
+        data: (summary.value.byModel || []).slice(0, 8).map((row) => Number(row.total || 0)),
+        backgroundColor: '#2dd4bf',
+        borderRadius: 3,
+      },
+    ],
+  },
 }));
 
 onMounted(() => {
