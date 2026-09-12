@@ -9,7 +9,7 @@
           AI Analytics Dashboard
         </h1>
         <p class="mt-1 text-sm text-[var(--text-muted)]">
-          Monitoreo de uso del chat con IA Â·
+          Monitoreo de uso del chat con IA ·
           {{ usingMock ? 'datos mock' : 'datos en vivo (/api/stats)' }}
         </p>
       </div>
@@ -87,7 +87,7 @@
         <UiCard>
           <div class="mb-3 flex items-center justify-between">
             <h2 class="text-sm font-medium text-[var(--text)]">Mensajes por día</h2>
-            <span class="text-xs text-[var(--text-muted)]">Spline area Â· {{ rangeLabel }}</span>
+            <span class="text-xs text-[var(--text-muted)]">Spline area · {{ rangeLabel }}</span>
           </div>
           <div class="h-64 w-full">
             <ApexChartSafe
@@ -104,7 +104,7 @@
         <UiCard>
           <div class="mb-3 flex items-center justify-between">
             <h2 class="text-sm font-medium text-[var(--text)]">Usuarios activos / día</h2>
-            <span class="text-xs text-[var(--text-muted)]">Barras Â· {{ rangeLabel }}</span>
+            <span class="text-xs text-[var(--text-muted)]">Barras · {{ rangeLabel }}</span>
           </div>
           <div class="h-64 w-full">
             <ApexChartSafe
@@ -157,7 +157,7 @@
         <UiCard>
           <div class="mb-3 flex items-center justify-between">
             <h2 class="text-sm font-medium text-[var(--text)]">Tokens por tipo</h2>
-            <span class="text-xs text-[var(--text-muted)]">Apiladas Â· prompt vs completion</span>
+            <span class="text-xs text-[var(--text-muted)]">Apiladas · prompt vs completion</span>
           </div>
           <div class="h-64 w-full">
             <ApexChartSafe
@@ -206,9 +206,9 @@
               >
                 <td class="px-2 py-3 tabular-nums text-slate-500">{{ i + 1 }}</td>
                 <td class="px-2 py-3 font-medium text-slate-100">
-                  {{ user.name || 'â' }}
+                  {{ user.name || '—' }}
                 </td>
-                <td class="px-2 py-3 text-slate-400">{{ user.email || 'â' }}</td>
+                <td class="px-2 py-3 text-slate-400">{{ user.email || '—' }}</td>
                 <td class="px-2 py-3 text-right tabular-nums text-slate-100">
                   {{ fmtCompact(user.totalTokens) }}
                 </td>
@@ -267,35 +267,35 @@ const rangeLabel = computed(() =>
 
 const kpiCards = computed(() => [
   {
-    icon: 'ð¬',
+    icon: '💬',
     label: 'Mensajes Totales',
     value: fmt(stats.value.totals.totalMessages),
     sub: `+${fmt(stats.value.messagesLast7Days)} últimos 7 días`,
     subClass: 'text-slate-400',
   },
   {
-    icon: 'ð¥',
+    icon: '👥',
     label: 'Usuarios',
     value: fmt(stats.value.totals.totalUsers),
     sub: `+${fmt(stats.value.newUsersLast30Days)} últimos 30 días`,
     subClass: 'text-emerald-400',
   },
   {
-    icon: 'ðï¸',
+    icon: '🗂️',
     label: 'Conversaciones',
     value: fmt(stats.value.totals.totalConversations),
     sub: `${avgMsgPerConv.value} mensajes/conv`,
     subClass: 'text-slate-400',
   },
   {
-    icon: 'ð¢',
+    icon: '🔢',
     label: 'Tokens Consumidos',
     value: fmtCompact(totalTokens.value),
-    sub: `${fmtCompact(promptTokens.value)} prompt Â· ${fmtCompact(completionTokens.value)} completion`,
+    sub: `${fmtCompact(promptTokens.value)} prompt · ${fmtCompact(completionTokens.value)} completion`,
     subClass: 'text-slate-400',
   },
   {
-    icon: 'ð¤',
+    icon: '🤖',
     label: 'Agentes Activos',
     value: fmt(stats.value.totals.totalAgents),
     sub: `${fmt(stats.value.totals.totalFiles)} archivos subidos`,

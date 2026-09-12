@@ -5,7 +5,7 @@
         <p class="text-xs uppercase tracking-wider text-[var(--text-muted)]">Uso</p>
         <h2 class="text-xl font-semibold text-[var(--text)]">Tokens / Transacciones</h2>
         <p class="text-sm text-[var(--text-muted)]">
-          Resumen y detalle de consumo Â· solo lectura
+          Resumen y detalle de consumo · solo lectura
         </p>
       </div>
       <div class="inline-flex rounded-lg border p-1" style="border-color: var(--border)">
@@ -30,19 +30,19 @@
       <UiCard padding="sm">
         <p class="text-[10px] uppercase text-[var(--text-muted)]">Tokens</p>
         <p class="text-xl font-semibold text-[var(--text)]">
-          {{ summaryLoading ? 'â¦' : formatNumber(summary.totals.totalTokens) }}
+          {{ summaryLoading ? '…' : formatNumber(summary.totals.totalTokens) }}
         </p>
       </UiCard>
       <UiCard padding="sm">
         <p class="text-[10px] uppercase text-[var(--text-muted)]">Transacciones</p>
         <p class="text-xl font-semibold text-[var(--text)]">
-          {{ summaryLoading ? 'â¦' : formatNumber(summary.totals.count) }}
+          {{ summaryLoading ? '…' : formatNumber(summary.totals.count) }}
         </p>
       </UiCard>
       <UiCard padding="sm">
         <p class="text-[10px] uppercase text-[var(--text-muted)]">Modelos</p>
         <p class="text-xl font-semibold text-[var(--text)]">
-          {{ summaryLoading ? 'â¦' : summary.byModel.length }}
+          {{ summaryLoading ? '…' : summary.byModel.length }}
         </p>
       </UiCard>
     </div>
@@ -54,7 +54,7 @@
           <span class="text-xs text-[var(--text-muted)]">Apiladas</span>
         </div>
         <div v-if="summaryLoading" class="py-16 text-center text-sm text-[var(--text-muted)]">
-          Cargandoâ¦
+          Cargando…
         </div>
         <div v-else-if="!tokensStackedSeries.length" class="py-16 text-center text-sm text-[var(--text-muted)]">
           Sin datos
@@ -77,7 +77,7 @@
           <span class="text-xs text-[var(--text-muted)]">Donut</span>
         </div>
         <div v-if="summaryLoading" class="py-16 text-center text-sm text-[var(--text-muted)]">
-          Cargandoâ¦
+          Cargando…
         </div>
         <div v-else-if="!modelDonutSeries.length" class="py-16 text-center text-sm text-[var(--text-muted)]">
           Sin datos
@@ -100,7 +100,7 @@
           <span class="text-xs text-[var(--text-muted)]">Barras</span>
         </div>
         <div v-if="summaryLoading" class="py-16 text-center text-sm text-[var(--text-muted)]">
-          Cargandoâ¦
+          Cargando…
         </div>
         <div v-else-if="!modelBarSeries[0]?.data?.length" class="py-16 text-center text-sm text-[var(--text-muted)]">
           Sin datos
@@ -124,7 +124,7 @@
         <span class="text-xs text-[var(--text-muted)]">participación</span>
       </div>
       <div v-if="summaryLoading" class="py-10 text-center text-sm text-[var(--text-muted)]">
-        Cargandoâ¦
+        Cargando…
       </div>
       <div v-else-if="!summary.byUser.length" class="py-10 text-center text-sm text-[var(--text-muted)]">
         Sin datos de consumo por usuario
@@ -187,13 +187,13 @@
           v-model="searchQuery"
           class="ui-input sm:max-w-sm"
           type="search"
-          placeholder="Buscar model, conversationId, tokenTypeâ¦"
+          placeholder="Buscar model, conversationId, tokenType…"
         />
         <input
           v-model="userFilter"
           class="ui-input sm:max-w-xs"
           type="text"
-          placeholder="Filtrar por user idâ¦"
+          placeholder="Filtrar por user id…"
           @keyup.enter="applyUserFilter"
         />
         <button type="button" class="ui-btn-secondary w-full sm:w-auto" @click="applyUserFilter">
@@ -231,10 +231,10 @@
                 style="border-color: var(--border)"
               >
                 <td class="max-w-[180px] truncate px-2 py-3 text-[var(--text)]">
-                  {{ tx.userEmail || tx.userName || tx.user || 'â' }}
+                  {{ tx.userEmail || tx.userName || tx.user || '—' }}
                 </td>
-                <td class="px-2 py-3 text-[var(--text-muted)]">{{ tx.tokenType || 'â' }}</td>
-                <td class="px-2 py-3 text-[var(--text-muted)]">{{ tx.model || 'â' }}</td>
+                <td class="px-2 py-3 text-[var(--text-muted)]">{{ tx.tokenType || '—' }}</td>
+                <td class="px-2 py-3 text-[var(--text-muted)]">{{ tx.model || '—' }}</td>
                 <td class="px-2 py-3 font-mono text-[var(--text)]">
                   {{ formatNumber(Math.abs(tx.rawAmount || tx.tokenValue || 0)) }}
                 </td>
