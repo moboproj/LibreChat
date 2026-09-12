@@ -68,7 +68,6 @@
     </UiCard>
 
     <template v-else>
-      <!-- KPI row -->
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <UiCard v-for="card in kpiCards" :key="card.label">
           <div class="flex items-start justify-between gap-2">
@@ -82,21 +81,14 @@
         </UiCard>
       </div>
 
-      <!-- Mid charts 50/50 -->
       <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <UiCard>
           <div class="mb-3 flex items-center justify-between">
             <h2 class="text-sm font-medium text-[var(--text)]">Mensajes por día</h2>
-            <span class="text-xs text-[var(--text-muted)]">Spline area · {{ rangeLabel }}</span>
+            <span class="text-xs text-[var(--text-muted)]">Área · {{ rangeLabel }}</span>
           </div>
           <div class="h-64 w-full">
-            <ApexChart
-              type="area"
-              height="100%"
-              width="100%"
-              :options="messagesAreaOptions"
-              :series="messagesAreaSeries"
-            />
+            <AdminChart type="line" :data="messagesAreaData" :options="areaOptions" />
           </div>
         </UiCard>
 
@@ -106,13 +98,7 @@
             <span class="text-xs text-[var(--text-muted)]">Barras · {{ rangeLabel }}</span>
           </div>
           <div class="h-64 w-full">
-            <ApexChart
-              type="bar"
-              height="100%"
-              width="100%"
-              :options="activeUsersBarOptions"
-              :series="activeUsersBarSeries"
-            />
+            <AdminChart type="bar" :data="activeUsersBarData" />
           </div>
         </UiCard>
       </div>
@@ -124,13 +110,7 @@
             <span class="text-xs text-[var(--text-muted)]">Donut</span>
           </div>
           <div class="h-64 w-full">
-            <ApexChart
-              type="donut"
-              height="100%"
-              width="100%"
-              :options="modelDonutOptions"
-              :series="modelDonutSeries"
-            />
+            <AdminChart type="doughnut" :data="modelDonutData" :options="donutOptions" />
           </div>
         </UiCard>
 
@@ -140,13 +120,7 @@
             <span class="text-xs text-[var(--text-muted)]">Barras horizontales</span>
           </div>
           <div class="h-64 w-full">
-            <ApexChart
-              type="bar"
-              height="100%"
-              width="100%"
-              :options="endpointBarOptions"
-              :series="endpointBarSeries"
-            />
+            <AdminChart type="bar" :data="endpointBarData" :options="horizontalBarOptions" />
           </div>
         </UiCard>
 
@@ -156,13 +130,7 @@
             <span class="text-xs text-[var(--text-muted)]">Apiladas · prompt vs completion</span>
           </div>
           <div class="h-64 w-full">
-            <ApexChart
-              type="bar"
-              height="100%"
-              width="100%"
-              :options="tokensStackedOptions"
-              :series="tokensStackedSeries"
-            />
+            <AdminChart type="bar" :data="tokensStackedData" :options="stackedBarOptions" />
           </div>
         </UiCard>
       </div>
@@ -231,9 +199,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { ApexOptions } from 'apexcharts';
-import ApexChart from 'vue3-apexcharts';
+import type { ChartData, ChartOptions } from 'chart.js';
 import { useAdminStats } from '@/composables/useAdminStats';
+import AdminChart from '@/components/ui/AdminChart.vue';
 import UiCard from '@/components/ui/UiCard.vue';
 import CardSkeleton from '@/components/ui/CardSkeleton.vue';
 
@@ -297,141 +265,98 @@ const kpiCards = computed(() => [
   },
 ]);
 
-const chartBase: ApexOptions = {
-  chart: {
-    background: 'transparent',
-    toolbar: { show: false },
-    fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-  },
-  theme: { mode: 'dark' },
-  grid: {
-    borderColor: '#1e293b',
-    strokeDashArray: 3,
-  },
-  dataLabels: { enabled: false },
-  legend: {
-    labels: { colors: '#94a3b8' },
-    fontSize: '11px',
-  },
-  tooltip: { theme: 'dark' },
-  xaxis: {
-    labels: { style: { colors: '#64748b', fontSize: '10px' } },
-    axisBorder: { show: false },
-    axisTicks: { show: false },
-  },
-  yaxis: {
-    labels: { style: { colors: '#64748b', fontSize: '10px' } },
-  },
+const areaOptions: ChartOptions<'line'> = {
+  elements: { line: { tension: 0.35 } },
+  plugins: { legend: { display: false } },
 };
 
-const messagesAreaSeries = computed(() => [
-  { name: 'Mensajes', data: slicedDays.value.messages.map((d) => d.count) },
-]);
+const donutOptions: ChartOptions<'doughnut'> = {
+  cutout: '68%',
+  plugins: { legend: { position: 'bottom' } },
+};
 
-const messagesAreaOptions = computed<ApexOptions>(() => ({
-  ...chartBase,
-  chart: { ...chartBase.chart, type: 'area', sparkline: { enabled: false } },
-  stroke: { curve: 'smooth', width: 2 },
-  fill: {
-    type: 'gradient',
-    gradient: {
-      shadeIntensity: 0.4,
-      opacityFrom: 0.45,
-      opacityTo: 0.05,
-      stops: [0, 90, 100],
-    },
-  },
-  colors: ['#38bdf8'],
-  xaxis: {
-    ...chartBase.xaxis,
-    categories: slicedDays.value.messages.map((d) => d._id.slice(5)),
-  },
-}));
+const horizontalBarOptions: ChartOptions<'bar'> = {
+  indexAxis: 'y',
+  plugins: { legend: { display: false } },
+};
 
-const activeUsersBarSeries = computed(() => [
-  {
-    name: 'Usuarios activos',
-    data: slicedDays.value.active.map((d) => d.activeUsers),
-  },
-]);
-
-const activeUsersBarOptions = computed<ApexOptions>(() => ({
-  ...chartBase,
-  chart: { ...chartBase.chart, type: 'bar' },
-  plotOptions: { bar: { borderRadius: 3, columnWidth: '55%' } },
-  colors: ['#818cf8'],
-  xaxis: {
-    ...chartBase.xaxis,
-    categories: slicedDays.value.active.map((d) => d._id.slice(5)),
-  },
-}));
-
-const modelDonutSeries = computed(() =>
-  stats.value.messagesByModel.map((m) => m.count),
-);
-
-const modelDonutOptions = computed<ApexOptions>(() => ({
-  ...chartBase,
-  labels: stats.value.messagesByModel.map((m) => m._id || 'unknown'),
-  colors: ['#38bdf8', '#34d399', '#fbbf24', '#f87171', '#a78bfa'],
-  stroke: { width: 0 },
-  plotOptions: {
-    pie: {
-      donut: {
-        size: '68%',
-        labels: {
-          show: true,
-          name: { color: '#cbd5e1', fontSize: '12px' },
-          value: { color: '#f8fafc', fontSize: '16px', fontWeight: 600 },
-          total: {
-            show: true,
-            label: 'Total',
-            color: '#94a3b8',
-            formatter: () =>
-              fmt(stats.value.messagesByModel.reduce((s, m) => s + m.count, 0)),
-          },
-        },
+const stackedBarOptions: ChartOptions<'bar'> = {
+  scales: {
+    x: { stacked: true },
+    y: {
+      stacked: true,
+      ticks: {
+        callback: (value) => fmtCompact(Number(value)),
       },
     },
   },
-  legend: { ...chartBase.legend, position: 'bottom' },
-}));
+};
 
-const endpointBarSeries = computed(() => [
-  {
-    name: 'Mensajes',
-    data: stats.value.messagesByEndpoint.map((e) => e.count),
-  },
-]);
-
-const endpointBarOptions = computed<ApexOptions>(() => ({
-  ...chartBase,
-  chart: { ...chartBase.chart, type: 'bar' },
-  plotOptions: { bar: { horizontal: true, borderRadius: 3, barHeight: '55%' } },
-  colors: ['#2dd4bf'],
-  xaxis: {
-    ...chartBase.xaxis,
-    categories: stats.value.messagesByEndpoint.map((e) => e._id || 'unknown'),
-  },
-}));
-
-const tokensStackedSeries = computed(() => [
-  { name: 'Prompt (entrada)', data: [promptTokens.value] },
-  { name: 'Completion (salida)', data: [completionTokens.value] },
-]);
-
-const tokensStackedOptions = computed<ApexOptions>(() => ({
-  ...chartBase,
-  chart: { ...chartBase.chart, type: 'bar', stacked: true },
-  plotOptions: { bar: { horizontal: false, borderRadius: 4, columnWidth: '35%' } },
-  colors: ['#60a5fa', '#c084fc'],
-  xaxis: { ...chartBase.xaxis, categories: ['Tokens'] },
-  yaxis: {
-    ...chartBase.yaxis,
-    labels: {
-      style: { colors: '#64748b', fontSize: '10px' },
-      formatter: (v: number) => fmtCompact(v),
+const messagesAreaData = computed<ChartData<'line'>>(() => ({
+  labels: slicedDays.value.messages.map((d) => d._id.slice(5)),
+  datasets: [
+    {
+      label: 'Mensajes',
+      data: slicedDays.value.messages.map((d) => d.count),
+      borderColor: '#38bdf8',
+      backgroundColor: 'rgba(56, 189, 248, 0.25)',
+      fill: true,
+      pointRadius: 0,
+      borderWidth: 2,
     },
-  },
+  ],
+}));
+
+const activeUsersBarData = computed<ChartData<'bar'>>(() => ({
+  labels: slicedDays.value.active.map((d) => d._id.slice(5)),
+  datasets: [
+    {
+      label: 'Usuarios activos',
+      data: slicedDays.value.active.map((d) => d.activeUsers),
+      backgroundColor: '#818cf8',
+      borderRadius: 3,
+    },
+  ],
+}));
+
+const modelDonutData = computed<ChartData<'doughnut'>>(() => ({
+  labels: stats.value.messagesByModel.map((m) => m._id || 'unknown'),
+  datasets: [
+    {
+      data: stats.value.messagesByModel.map((m) => m.count),
+      backgroundColor: ['#38bdf8', '#34d399', '#fbbf24', '#f87171', '#a78bfa'],
+      borderWidth: 0,
+    },
+  ],
+}));
+
+const endpointBarData = computed<ChartData<'bar'>>(() => ({
+  labels: stats.value.messagesByEndpoint.map((e) => e._id || 'unknown'),
+  datasets: [
+    {
+      label: 'Mensajes',
+      data: stats.value.messagesByEndpoint.map((e) => e.count),
+      backgroundColor: '#2dd4bf',
+      borderRadius: 3,
+    },
+  ],
+}));
+
+const tokensStackedData = computed<ChartData<'bar'>>(() => ({
+  labels: ['Tokens'],
+  datasets: [
+    {
+      label: 'Prompt (entrada)',
+      data: [promptTokens.value],
+      backgroundColor: '#60a5fa',
+      borderRadius: 4,
+    },
+    {
+      label: 'Completion (salida)',
+      data: [completionTokens.value],
+      backgroundColor: '#c084fc',
+      borderRadius: 4,
+    },
+  ],
 }));
 </script>

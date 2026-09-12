@@ -56,17 +56,14 @@
         <div v-if="summaryLoading" class="py-16 text-center text-sm text-[var(--text-muted)]">
           Cargando…
         </div>
-        <div v-else-if="!tokensStackedSeries.length" class="py-16 text-center text-sm text-[var(--text-muted)]">
+        <div
+          v-else-if="!hasTokenSeries"
+          class="py-16 text-center text-sm text-[var(--text-muted)]"
+        >
           Sin datos
         </div>
         <div v-else class="h-56 w-full">
-          <ApexChart
-            type="bar"
-            height="100%"
-            width="100%"
-            :options="tokensStackedOptions"
-            :series="tokensStackedSeries"
-          />
+          <AdminChart type="bar" :data="tokensStackedData" :options="stackedBarOptions" />
         </div>
       </UiCard>
 
@@ -78,17 +75,14 @@
         <div v-if="summaryLoading" class="py-16 text-center text-sm text-[var(--text-muted)]">
           Cargando…
         </div>
-        <div v-else-if="!modelDonutSeries.length" class="py-16 text-center text-sm text-[var(--text-muted)]">
+        <div
+          v-else-if="!modelDonutData.datasets[0]?.data?.length"
+          class="py-16 text-center text-sm text-[var(--text-muted)]"
+        >
           Sin datos
         </div>
         <div v-else class="h-56 w-full">
-          <ApexChart
-            type="donut"
-            height="100%"
-            width="100%"
-            :options="modelDonutOptions"
-            :series="modelDonutSeries"
-          />
+          <AdminChart type="doughnut" :data="modelDonutData" :options="donutOptions" />
         </div>
       </UiCard>
 
@@ -100,17 +94,14 @@
         <div v-if="summaryLoading" class="py-16 text-center text-sm text-[var(--text-muted)]">
           Cargando…
         </div>
-        <div v-else-if="!modelBarSeries[0]?.data?.length" class="py-16 text-center text-sm text-[var(--text-muted)]">
+        <div
+          v-else-if="!modelBarData.datasets[0]?.data?.length"
+          class="py-16 text-center text-sm text-[var(--text-muted)]"
+        >
           Sin datos
         </div>
         <div v-else class="h-56 w-full">
-          <ApexChart
-            type="bar"
-            height="100%"
-            width="100%"
-            :options="modelBarOptions"
-            :series="modelBarSeries"
-          />
+          <AdminChart type="bar" :data="modelBarData" :options="horizontalBarOptions" />
         </div>
       </UiCard>
     </div>
@@ -259,8 +250,8 @@
 
 <script setup>
 import { computed, onMounted } from 'vue';
-import ApexChart from 'vue3-apexcharts';
 import { useUsage } from '../composables/useUsage';
+import AdminChart from '../components/ui/AdminChart.vue';
 import UiCard from '../components/ui/UiCard.vue';
 import PaginationBar from '../components/ui/PaginationBar.vue';
 import TableSkeleton from '../components/ui/TableSkeleton.vue';
@@ -306,30 +297,20 @@ const maxUserTokens = computed(() =>
   Math.max(0, ...summary.value.byUser.map((row) => Number(row.totalTokens || 0))),
 );
 
-const chartBase = {
-  chart: {
-    background: 'transparent',
-    toolbar: { show: false },
-    fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-  },
-  theme: { mode: 'dark' },
-  grid: {
-    borderColor: '#334155',
-    strokeDashArray: 3,
-  },
-  dataLabels: { enabled: false },
-  legend: {
-    labels: { colors: '#94a3b8' },
-    fontSize: '11px',
-  },
-  tooltip: { theme: 'dark' },
-  xaxis: {
-    labels: { style: { colors: '#64748b', fontSize: '10px' } },
-    axisBorder: { show: false },
-    axisTicks: { show: false },
-  },
-  yaxis: {
-    labels: { style: { colors: '#64748b', fontSize: '10px' } },
+const donutOptions = {
+  cutout: '68%',
+  plugins: { legend: { position: 'bottom' } },
+};
+
+const horizontalBarOptions = {
+  indexAxis: 'y',
+  plugins: { legend: { display: false } },
+};
+
+const stackedBarOptions = {
+  scales: {
+    x: { stacked: true },
+    y: { stacked: true },
   },
 };
 
@@ -346,83 +327,53 @@ const tokensByKey = computed(() => {
   };
 });
 
-const tokensStackedSeries = computed(() => {
+const hasTokenSeries = computed(() => {
   const { prompt, completion, other } = tokensByKey.value;
-  if (!prompt && !completion && !other) return [];
-  const series = [
-    { name: 'Prompt', data: [prompt] },
-    { name: 'Completion', data: [completion] },
-  ];
-  if (other) series.push({ name: 'Otros', data: [other] });
-  return series;
+  return Boolean(prompt || completion || other);
 });
 
-const tokensStackedOptions = computed(() => ({
-  ...chartBase,
-  chart: { ...chartBase.chart, type: 'bar', stacked: true },
-  plotOptions: { bar: { horizontal: false, borderRadius: 4, columnWidth: '35%' } },
-  colors: ['#60a5fa', '#c084fc', '#94a3b8'],
-  xaxis: { ...chartBase.xaxis, categories: ['Tokens'] },
-  yaxis: {
-    ...chartBase.yaxis,
-    labels: {
-      style: { colors: '#64748b', fontSize: '10px' },
-      formatter: (v) => Number(v || 0).toLocaleString(),
-    },
-  },
-}));
+const tokensStackedData = computed(() => {
+  const { prompt, completion, other } = tokensByKey.value;
+  const datasets = [
+    { label: 'Prompt', data: [prompt], backgroundColor: '#60a5fa', borderRadius: 4 },
+    { label: 'Completion', data: [completion], backgroundColor: '#c084fc', borderRadius: 4 },
+  ];
+  if (other) {
+    datasets.push({ label: 'Otros', data: [other], backgroundColor: '#94a3b8', borderRadius: 4 });
+  }
+  return { labels: ['Tokens'], datasets };
+});
 
-const modelDonutSeries = computed(() =>
-  (summary.value.byModel || []).slice(0, 8).map((row) => Number(row.total || 0)),
-);
-
-const modelDonutOptions = computed(() => ({
-  ...chartBase,
+const modelDonutData = computed(() => ({
   labels: (summary.value.byModel || []).slice(0, 8).map((row) => row._id || 'unknown'),
-  colors: ['#38bdf8', '#34d399', '#fbbf24', '#f87171', '#a78bfa', '#2dd4bf', '#fb7185', '#94a3b8'],
-  stroke: { width: 0 },
-  plotOptions: {
-    pie: {
-      donut: {
-        size: '68%',
-        labels: {
-          show: true,
-          name: { color: '#cbd5e1', fontSize: '12px' },
-          value: { color: '#f8fafc', fontSize: '16px', fontWeight: 600 },
-          total: {
-            show: true,
-            label: 'Total',
-            color: '#94a3b8',
-            formatter: () =>
-              formatNumber(
-                (summary.value.byModel || [])
-                  .slice(0, 8)
-                  .reduce((sum, row) => sum + Number(row.total || 0), 0),
-              ),
-          },
-        },
-      },
+  datasets: [
+    {
+      data: (summary.value.byModel || []).slice(0, 8).map((row) => Number(row.total || 0)),
+      backgroundColor: [
+        '#38bdf8',
+        '#34d399',
+        '#fbbf24',
+        '#f87171',
+        '#a78bfa',
+        '#2dd4bf',
+        '#fb7185',
+        '#94a3b8',
+      ],
+      borderWidth: 0,
     },
-  },
-  legend: { ...chartBase.legend, position: 'bottom' },
+  ],
 }));
 
-const modelBarSeries = computed(() => [
-  {
-    name: 'Tokens',
-    data: (summary.value.byModel || []).slice(0, 8).map((row) => Number(row.total || 0)),
-  },
-]);
-
-const modelBarOptions = computed(() => ({
-  ...chartBase,
-  chart: { ...chartBase.chart, type: 'bar' },
-  plotOptions: { bar: { horizontal: true, borderRadius: 3, barHeight: '55%' } },
-  colors: ['#2dd4bf'],
-  xaxis: {
-    ...chartBase.xaxis,
-    categories: (summary.value.byModel || []).slice(0, 8).map((row) => row._id || 'unknown'),
-  },
+const modelBarData = computed(() => ({
+  labels: (summary.value.byModel || []).slice(0, 8).map((row) => row._id || 'unknown'),
+  datasets: [
+    {
+      label: 'Tokens',
+      data: (summary.value.byModel || []).slice(0, 8).map((row) => Number(row.total || 0)),
+      backgroundColor: '#2dd4bf',
+      borderRadius: 3,
+    },
+  ],
 }));
 
 onMounted(() => {
