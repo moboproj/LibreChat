@@ -135,11 +135,16 @@
               :fallback="modelDonutFallback"
             />
           </div>
+          <p class="mt-2 text-[11px] leading-snug text-[var(--text-muted)]">
+            <span class="font-medium text-[var(--text)]">Sin modelo:</span>
+            mensaje sin modelo LLM usable (vacío), id de agente no encontrado, o agente sin modelo
+            asignado.
+          </p>
         </UiCard>
 
         <UiCard>
           <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-sm font-medium text-[var(--text)]">Mensajes por endpoint</h2>
+            <h2 class="text-sm font-medium text-[var(--text)]">Conversaciones por agente</h2>
             <span class="text-xs text-[var(--text-muted)]">Barras horizontales</span>
           </div>
           <div class="h-64 w-full">
@@ -147,11 +152,16 @@
               type="bar"
               height="100%"
               width="100%"
-              :options="endpointBarOptions"
-              :series="endpointBarSeries"
-              :fallback="endpointBarFallback"
+              :options="agentBarOptions"
+              :series="agentBarSeries"
+              :fallback="agentBarFallback"
             />
           </div>
+          <p class="mt-2 text-[11px] leading-snug text-[var(--text-muted)]">
+            <span class="font-medium text-[var(--text)]">Sin agente:</span>
+            conversación sin agente asociado, referencia inválida, o agente eliminado/no resoluble
+            en la base de datos.
+          </p>
         </UiCard>
 
         <UiCard>
@@ -403,21 +413,21 @@ const modelDonutOptions = computed<ApexOptions>(() => ({
   legend: { ...chartBase.legend, position: 'bottom' },
 }));
 
-const endpointBarSeries = computed(() => [
+const agentBarSeries = computed(() => [
   {
-    name: 'Mensajes',
-    data: stats.value.messagesByEndpoint.map((e) => e.count),
+    name: 'Conversaciones',
+    data: stats.value.conversationsByAgent.map((e) => e.count),
   },
 ]);
 
-const endpointBarOptions = computed<ApexOptions>(() => ({
+const agentBarOptions = computed<ApexOptions>(() => ({
   ...chartBase,
   chart: { ...chartBase.chart, type: 'bar' },
   plotOptions: { bar: { horizontal: true, borderRadius: 3, barHeight: '55%' } },
   colors: ['#2dd4bf'],
   xaxis: {
     ...chartBase.xaxis,
-    categories: stats.value.messagesByEndpoint.map((e) => e._id || 'Sin endpoint'),
+    categories: stats.value.conversationsByAgent.map((e) => e._id || 'Sin agente'),
   },
 }));
 
@@ -506,15 +516,15 @@ const modelDonutFallback = computed(() => ({
   } satisfies ChartData<'doughnut'>,
 }));
 
-const endpointBarFallback = computed(() => ({
+const agentBarFallback = computed(() => ({
   type: 'bar' as const,
   options: horizontalFallbackOpts,
   data: {
-    labels: stats.value.messagesByEndpoint.map((e) => e._id || 'Sin endpoint'),
+    labels: stats.value.conversationsByAgent.map((e) => e._id || 'Sin agente'),
     datasets: [
       {
-        label: 'Mensajes',
-        data: stats.value.messagesByEndpoint.map((e) => e.count),
+        label: 'Conversaciones',
+        data: stats.value.conversationsByAgent.map((e) => e.count),
         backgroundColor: '#2dd4bf',
         borderRadius: 3,
       },

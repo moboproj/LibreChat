@@ -2,8 +2,12 @@ const Conversation = require('../models/conversation.model');
 const Message = require('../models/message.model');
 const { parsePagination, paginatedResponse } = require('../utils/pagination');
 const { sendError, fromException } = require('../utils/httpError');
-const { attachUserIdentity, resolveIdentityFilter } = require('../services/userLookup');
-const { attachEndpointModelLabels } = require('../services/endpointLabels');
+const { attachUserIdentity, resolveIdentityFilter, usersByIds } = require('../services/userLookup');
+const {
+  attachEndpointModelLabels,
+  isAgentModelRef,
+  loadAgentsByRefs,
+} = require('../services/endpointLabels');
 
 function summarizeConversation(doc) {
   if (!doc) return null;
@@ -24,6 +28,45 @@ function summarizeConversation(doc) {
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };
+}
+
+function isUserMessage(doc) {
+  if (doc?.isCreatedByUser) return true;
+  const sender = String(doc?.sender || '')
+    .trim()
+    .toLowerCase();
+  return sender === 'user' || sender === 'usuario';
+}
+
+async function attachMessageActors(documents = []) {
+  if (!documents.length) return documents;
+
+  const userIds = documents.filter((doc) => isUserMessage(doc)).map((doc) => doc.user);
+  const agentRefs = [];
+  for (const doc of documents) {
+    if (isUserMessage(doc)) continue;
+    if (doc.agent_id) agentRefs.push(doc.agent_id);
+    if (isAgentModelRef(doc.model)) agentRefs.push(doc.model);
+  }
+
+  const [userMap, agentMap] = await Promise.all([usersByIds(userIds), loadAgentsByRefs(agentRefs)]);
+
+  return documents.map((doc) => {
+    if (isUserMessage(doc)) {
+      const user = userMap.get(String(doc.user || ''));
+      return {
+        ...doc,
+        displayActor: user?.name || null,
+      };
+    }
+
+    const ref = doc.agent_id || (isAgentModelRef(doc.model) ? doc.model : '');
+    const agent = ref ? agentMap.get(String(ref)) : null;
+    return {
+      ...doc,
+      displayActor: agent?.name || null,
+    };
+  });
 }
 
 const getConversations = async (req, res) => {
@@ -90,8 +133,9 @@ const getMessages = async (req, res) => {
       conversationId,
       user,
     });
+    const enriched = await attachMessageActors(documents);
 
-    return res.json(paginatedResponse({ documents, total, page, limit }));
+    return res.json(paginatedResponse({ documents: enriched, total, page, limit }));
   } catch (error) {
     return fromException(res, error);
   }

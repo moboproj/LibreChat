@@ -67,17 +67,46 @@ async function messagesByModel(since) {
   return getReadDB().collection('messages').aggregate(pipeline).toArray();
 }
 
-async function messagesByEndpoint(since) {
+/**
+ * Conversations per agent in the selected window (by updatedAt, fallback createdAt).
+ * agentRef = agent_id, or model when it looks like agent_*, else null.
+ */
+async function conversationsByAgent(since) {
   const pipeline = [];
   if (since) {
-    pipeline.push({ $match: { createdAt: { $gte: since } } });
+    pipeline.push({
+      $match: {
+        $or: [{ updatedAt: { $gte: since } }, { createdAt: { $gte: since } }],
+      },
+    });
   }
   pipeline.push(
-    { $group: { _id: '$endpoint', count: { $sum: 1 } } },
+    {
+      $addFields: {
+        agentRef: {
+          $let: {
+            vars: {
+              agentId: { $ifNull: ['$agent_id', ''] },
+              model: { $ifNull: ['$model', ''] },
+            },
+            in: {
+              $cond: [
+                { $and: [{ $ne: ['$$agentId', ''] }, { $ne: ['$$agentId', null] }] },
+                '$$agentId',
+                {
+                  $cond: [{ $eq: [{ $indexOfCP: ['$$model', 'agent_'] }, 0] }, '$$model', null],
+                },
+              ],
+            },
+          },
+        },
+      },
+    },
+    { $group: { _id: '$agentRef', count: { $sum: 1 } } },
     { $sort: { count: -1 } },
     { $limit: 20 },
   );
-  return getReadDB().collection('messages').aggregate(pipeline).toArray();
+  return getReadDB().collection('conversations').aggregate(pipeline).toArray();
 }
 
 async function tokensByType(since) {
@@ -127,7 +156,7 @@ module.exports = {
   messagesByDay,
   activeUsersByDay,
   messagesByModel,
-  messagesByEndpoint,
+  conversationsByAgent,
   tokensByType,
   topUsersByTokens,
 };

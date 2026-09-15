@@ -242,7 +242,7 @@ export function useAgents() {
     const label = agent?.name || agent?.id || 'este agente';
     const ok = await confirm(
       'Eliminar agente',
-      `¿Seguro que deseas eliminar "${label}"? Esta acción afecta la misma DB de LibreChat.`,
+      `¿Seguro que deseas eliminar "${label}"? Esta acción afecta la misma DB de Omnichat.`,
       { confirmLabel: 'Eliminar' },
     );
     if (!ok) return;

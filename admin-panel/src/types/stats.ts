@@ -48,7 +48,7 @@ export interface AdminStatsPayload {
   messagesByDay: DayCount[];
   activeUsersByDay: DayActiveUsers[];
   messagesByModel: LabeledCount[];
-  messagesByEndpoint: LabeledCount[];
+  conversationsByAgent: LabeledCount[];
   tokensByType: TokenTypeTotal[];
   topUsersByTokens: TopUserTokens[];
 }
@@ -93,11 +93,11 @@ export function createMockStats(): AdminStatsPayload {
       { _id: 'gemini-2.5-flash', count: 190 },
       { _id: 'agent_custom', count: 120 },
     ],
-    messagesByEndpoint: [
-      { _id: 'agents', count: 980 },
-      { _id: 'openAI', count: 410 },
-      { _id: 'google', count: 320 },
-      { _id: 'anthropic', count: 132 },
+    conversationsByAgent: [
+      { _id: 'Ventas', count: 48 },
+      { _id: 'Soporte', count: 32 },
+      { _id: 'RH', count: 21 },
+      { _id: 'Sin agente', count: 12 },
     ],
     tokensByType: [
       { _id: 'prompt', total: 1_250_000 },

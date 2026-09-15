@@ -33,7 +33,7 @@ export function normalizeStatsPayload(
     messagesByDay: raw?.messagesByDay ?? [],
     activeUsersByDay: raw?.activeUsersByDay ?? [],
     messagesByModel: raw?.messagesByModel ?? [],
-    messagesByEndpoint: raw?.messagesByEndpoint ?? [],
+    conversationsByAgent: raw?.conversationsByAgent ?? [],
     tokensByType: raw?.tokensByType ?? [],
     topUsersByTokens: raw?.topUsersByTokens ?? [],
   };

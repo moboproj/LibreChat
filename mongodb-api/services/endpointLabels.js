@@ -104,16 +104,26 @@ async function resolveMessagesByModelRows(rows = []) {
     .slice(0, 10);
 }
 
-function resolveMessagesByEndpointRows(rows = []) {
+async function resolveConversationsByAgentRows(rows = []) {
+  const refs = rows
+    .map((row) => row?._id)
+    .filter(Boolean)
+    .map(String);
+  const agents = await loadAgentsByRefs(refs);
+
   const merged = new Map();
   for (const row of rows) {
-    const label = readableEndpointLabel(row?._id);
+    const ref = row?._id == null || row?._id === '' ? '' : String(row._id);
+    const agent = ref ? agents.get(ref) : null;
+    const label = agent?.name ? String(agent.name) : 'Sin agente';
     const prev = merged.get(label) || 0;
     merged.set(label, prev + Number(row?.count || 0));
   }
+
   return [...merged.entries()]
     .map(([label, count]) => ({ _id: label, count }))
-    .sort((a, b) => b.count - a.count);
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 15);
 }
 
 async function attachEndpointModelLabels(documents = []) {
@@ -144,6 +154,6 @@ module.exports = {
   agentRefFromConversation,
   formatModelResponseLabel,
   resolveMessagesByModelRows,
-  resolveMessagesByEndpointRows,
+  resolveConversationsByAgentRows,
   attachEndpointModelLabels,
 };

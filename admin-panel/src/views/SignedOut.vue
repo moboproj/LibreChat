@@ -3,7 +3,7 @@
     <div class="ui-card max-w-md p-6 text-center">
       <h2 class="text-lg font-semibold text-[var(--text)]">Sesión cerrada</h2>
       <p class="mt-2 text-sm text-[var(--text-muted)]">
-        Cerraste sesión en OmniChat Admin. Para volver a entrar usa SSO.
+        Cerraste sesión en Omnichat Admin. Para volver a entrar usa SSO.
       </p>
       <button type="button" class="ui-btn-primary mt-6 w-full" @click="startOpenIdLogin">
         Iniciar sesión con SSO

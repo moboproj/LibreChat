@@ -5,7 +5,7 @@
         <p class="text-xs uppercase tracking-wider text-[var(--text-muted)]">Catálogo</p>
         <h2 class="text-xl font-semibold text-[var(--text)]">Agentes</h2>
         <p class="text-sm text-[var(--text-muted)]">
-          CRUD · provider/model/tools/MCP desde catálogo (como LibreChat)
+          CRUD · provider/model/tools/MCP desde catálogo (como Omnichat)
         </p>
       </div>
       <button type="button" class="ui-btn-primary w-full sm:w-auto" @click="openCreateForm">

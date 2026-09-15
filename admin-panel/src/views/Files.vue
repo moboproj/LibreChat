@@ -3,7 +3,7 @@
     <div>
       <p class="text-xs uppercase tracking-wider text-[var(--text-muted)]">Almacenamiento</p>
       <h2 class="text-xl font-semibold text-[var(--text)]">Archivos</h2>
-      <p class="text-sm text-[var(--text-muted)]">Solo lectura · files de LibreChat</p>
+      <p class="text-sm text-[var(--text-muted)]">Solo lectura · files de Omnichat</p>
     </div>
 
     <UiCard>

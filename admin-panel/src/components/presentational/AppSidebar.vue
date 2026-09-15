@@ -21,10 +21,10 @@
           class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold text-white"
           style="background: var(--accent)"
         >
-          LC
+          OC
         </div>
         <div v-if="!isRail" class="min-w-0">
-          <p class="truncate text-sm font-semibold text-[var(--text)]">LibreChat</p>
+          <p class="truncate text-sm font-semibold text-[var(--text)]">Omnichat</p>
           <p class="truncate text-[10px] text-[var(--text-muted)]">Admin Panel</p>
         </div>
       </div>

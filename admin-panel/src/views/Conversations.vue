@@ -163,10 +163,7 @@
               style="border-color: var(--border); background: rgba(0, 0, 0, 0.2)"
             >
               <div class="mb-1 flex flex-wrap items-center justify-between gap-2 text-[10px] text-[var(--text-muted)]">
-                <span>
-                  {{ msg.sender || (msg.isCreatedByUser ? 'User' : 'AI') }}
-                  · {{ msg.model || '—' }}
-                </span>
+                <span>{{ messageActorLabel(msg) }}</span>
                 <span>{{ formatDate(msg.createdAt) }}</span>
               </div>
               <p class="whitespace-pre-wrap text-sm text-[var(--text)]">
@@ -212,6 +209,18 @@ const {
   closeDetail,
   applyFilters,
 } = useConversations();
+
+function messageActorLabel(msg) {
+  if (msg?.displayActor) return msg.displayActor;
+  if (msg?.isCreatedByUser) {
+    return selectedConversation.value?.userName || '—';
+  }
+  const sender = String(msg?.sender || '').trim().toLowerCase();
+  if (sender === 'user' || sender === 'usuario') {
+    return selectedConversation.value?.userName || '—';
+  }
+  return selectedConversation.value?.agentName || '—';
+}
 
 onMounted(() => {
   loadConversations();

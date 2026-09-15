@@ -1,7 +1,7 @@
 <template>
   <div class="ui-modal-overlay !bg-[var(--app-bg)]">
     <div class="ui-modal max-w-md text-center">
-      <h2 class="text-xl font-semibold text-[var(--text)]">OmniChat Admin</h2>
+      <h2 class="text-xl font-semibold text-[var(--text)]">Omnichat Admin</h2>
       <p class="mt-2 text-sm text-[var(--text-muted)]">
         {{
           openidEnabled

@@ -130,14 +130,8 @@
         Sin datos de consumo por usuario
       </div>
       <div v-else class="overflow-x-auto">
-        <table class="w-full min-w-[640px] border-collapse text-left text-sm">
-          <thead>
-            <tr
-              class="border-b text-xs uppercase tracking-wide text-[var(--text-muted)]"
-              style="border-color: var(--border)"
-            >
-              <th class="px-2 py-2 font-medium">#</th>
-              <th class="px-2 py-2 font-medium">Usuario</th>
+        <table class="w-full min-w-[860px] border-collapse text-left text-sm">
+              <th class="px-2 py-2 font-medium">Correo</th>
               <th class="px-2 py-2 font-medium text-right">Tokens</th>
               <th class="px-2 py-2 font-medium">Participación</th>
             </tr>
@@ -150,8 +144,14 @@
               style="border-color: var(--border)"
             >
               <td class="px-2 py-3 text-[var(--text-muted)]">{{ i + 1 }}</td>
-              <td class="max-w-[220px] truncate px-2 py-3 text-[var(--text)]">
-                {{ user.username || user.email || user.name || user._id }}
+              <td class="px-2 py-3 font-mono text-xs text-[var(--text)]">
+                {{ user.username || '—' }}
+              </td>
+              <td class="max-w-[160px] truncate px-2 py-3 text-[var(--text-muted)]">
+                {{ user.name || '—' }}
+              </td>
+              <td class="max-w-[200px] truncate px-2 py-3 text-[var(--text-muted)]">
+                {{ user.email || '—' }}
               </td>
               <td class="px-2 py-3 text-right font-mono text-[var(--text)]">
                 {{ formatNumber(user.totalTokens) }}

@@ -3,7 +3,7 @@ const User = require('../models/user.model');
 const { fromException } = require('../utils/httpError');
 const {
   resolveMessagesByModelRows,
-  resolveMessagesByEndpointRows,
+  resolveConversationsByAgentRows,
 } = require('../services/endpointLabels');
 
 function resolveSince(range) {
@@ -46,7 +46,7 @@ const getCollectionsStats = async (req, res) => {
       messagesByDay,
       activeUsersByDay,
       messagesByModelRaw,
-      messagesByEndpointRaw,
+      conversationsByAgentRaw,
       tokensByType,
       topUsersByTokens,
     ] = await Promise.all([
@@ -55,13 +55,13 @@ const getCollectionsStats = async (req, res) => {
       Stats.messagesByDay(since),
       Stats.activeUsersByDay(since),
       Stats.messagesByModel(since),
-      Stats.messagesByEndpoint(since),
+      Stats.conversationsByAgent(since),
       Stats.tokensByType(since),
       Stats.topUsersByTokens(since),
     ]);
 
     const messagesByModel = await resolveMessagesByModelRows(messagesByModelRaw);
-    const messagesByEndpoint = resolveMessagesByEndpointRows(messagesByEndpointRaw);
+    const conversationsByAgent = await resolveConversationsByAgentRows(conversationsByAgentRaw);
 
     return res.json({
       range,
@@ -80,7 +80,7 @@ const getCollectionsStats = async (req, res) => {
       messagesByDay,
       activeUsersByDay,
       messagesByModel,
-      messagesByEndpoint,
+      conversationsByAgent,
       tokensByType,
       topUsersByTokens,
     });

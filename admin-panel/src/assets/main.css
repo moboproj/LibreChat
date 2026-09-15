@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /*
-  Visual references (dark, ChatGPT / LibreChat adjacent):
+  Visual references (dark, ChatGPT / Omnichat adjacent):
   - ChatGPT dark charcoal: canvas #212121, sidebar #171717, raised #2F2F2F
   - OpenAI tokens: text #ECECEC / #B4B4B4, border white@10%, accent #10A37F
   Keep slate base, soften toward charcoal + emerald accent.
