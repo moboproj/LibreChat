@@ -1,4 +1,3 @@
-const { ObjectId } = require('mongodb');
 const { getReadDB } = require('../config/db');
 
 const COLLECTION = 'conversations';
@@ -7,14 +6,31 @@ function conversationsRead() {
   return getReadDB().collection(COLLECTION);
 }
 
-async function list({ limit = 10, skip = 0, search = '', user = '' } = {}) {
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+async function list({
+  limit = 10,
+  skip = 0,
+  search = '',
+  userIds = null,
+  endpointModel = '',
+} = {}) {
   const filter = {};
-  if (user) {
-    filter.user = String(user);
+  if (Array.isArray(userIds)) {
+    filter.user = { $in: userIds.map(String) };
+  }
+  if (endpointModel) {
+    const regex = { $regex: escapeRegex(endpointModel), $options: 'i' };
+    filter.$and = [...(filter.$and || []), { $or: [{ endpoint: regex }, { model: regex }] }];
   }
   if (search) {
-    const regex = { $regex: search, $options: 'i' };
-    filter.$or = [{ title: regex }, { conversationId: regex }, { user: regex }, { model: regex }];
+    const regex = { $regex: escapeRegex(search), $options: 'i' };
+    filter.$and = [
+      ...(filter.$and || []),
+      { $or: [{ title: regex }, { conversationId: regex }, { user: regex }, { model: regex }] },
+    ];
   }
 
   const [documents, total] = await Promise.all([
@@ -31,6 +47,7 @@ async function list({ limit = 10, skip = 0, search = '', user = '' } = {}) {
 }
 
 async function findByIdOrConversationId(id) {
+  const { ObjectId } = require('mongodb');
   if (ObjectId.isValid(id) && String(new ObjectId(id)) === String(id)) {
     const byOid = await conversationsRead().findOne({ _id: new ObjectId(id) });
     if (byOid) return byOid;

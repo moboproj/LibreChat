@@ -114,6 +114,7 @@ async function topUsersByTokens(since) {
         totalTokens: 1,
         name: { $arrayElemAt: ['$userInfo.name', 0] },
         email: { $arrayElemAt: ['$userInfo.email', 0] },
+        username: { $arrayElemAt: ['$userInfo.username', 0] },
       },
     },
   );

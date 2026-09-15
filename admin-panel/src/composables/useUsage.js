@@ -56,7 +56,10 @@ export function useUsage() {
       transactions.value = response.data.documents || [];
       pagination.applyMeta(response.data);
     } catch (error) {
-      showError(getErrorTitle(error, 'Error al cargar transacciones'), getErrorMessage(error));
+      showError(
+        getErrorTitle(error, 'Error al cargar registros de consumo'),
+        getErrorMessage(error),
+      );
     } finally {
       loading.value = false;
     }

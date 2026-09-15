@@ -139,7 +139,7 @@
 
         <UiCard>
           <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-sm font-medium text-[var(--text)]">Conversaciones por endpoint</h2>
+            <h2 class="text-sm font-medium text-[var(--text)]">Mensajes por endpoint</h2>
             <span class="text-xs text-[var(--text-muted)]">Barras horizontales</span>
           </div>
           <div class="h-64 w-full">
@@ -378,7 +378,7 @@ const modelDonutSeries = computed(() =>
 
 const modelDonutOptions = computed<ApexOptions>(() => ({
   ...chartBase,
-  labels: stats.value.messagesByModel.map((m) => m._id || 'unknown'),
+  labels: stats.value.messagesByModel.map((m) => m._id || 'Sin modelo'),
   colors: ['#38bdf8', '#34d399', '#fbbf24', '#f87171', '#a78bfa'],
   stroke: { width: 0 },
   plotOptions: {
@@ -417,7 +417,7 @@ const endpointBarOptions = computed<ApexOptions>(() => ({
   colors: ['#2dd4bf'],
   xaxis: {
     ...chartBase.xaxis,
-    categories: stats.value.messagesByEndpoint.map((e) => e._id || 'unknown'),
+    categories: stats.value.messagesByEndpoint.map((e) => e._id || 'Sin endpoint'),
   },
 }));
 
@@ -495,7 +495,7 @@ const modelDonutFallback = computed(() => ({
   type: 'doughnut' as const,
   options: donutFallbackOpts,
   data: {
-    labels: stats.value.messagesByModel.map((m) => m._id || 'unknown'),
+    labels: stats.value.messagesByModel.map((m) => m._id || 'Sin modelo'),
     datasets: [
       {
         data: stats.value.messagesByModel.map((m) => m.count),
@@ -510,7 +510,7 @@ const endpointBarFallback = computed(() => ({
   type: 'bar' as const,
   options: horizontalFallbackOpts,
   data: {
-    labels: stats.value.messagesByEndpoint.map((e) => e._id || 'unknown'),
+    labels: stats.value.messagesByEndpoint.map((e) => e._id || 'Sin endpoint'),
     datasets: [
       {
         label: 'Mensajes',

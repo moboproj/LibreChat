@@ -1,23 +1,14 @@
 const Transaction = require('../models/transaction.model');
-const User = require('../models/user.model');
+const { attachUserIdentity, resolveIdentityFilter } = require('../services/userLookup');
 const { parsePagination, paginatedResponse } = require('../utils/pagination');
 const { resolveSince, normalizeRange } = require('../utils/range');
 const { fromException } = require('../utils/httpError');
 
-async function attachUserInfo(docs) {
-  const ids = [...new Set(docs.map((doc) => (doc.user ? String(doc.user) : null)).filter(Boolean))];
-  const users = await Promise.all(ids.map((id) => User.findById(id)));
-  const map = new Map(
-    users.filter(Boolean).map((user) => [String(user._id), { email: user.email, name: user.name }]),
-  );
-  return docs.map((doc) => {
-    const info = map.get(String(doc.user));
-    return {
-      ...doc,
-      userEmail: info?.email || null,
-      userName: info?.name || null,
-    };
-  });
+async function resolveUserIdsParam(userQuery) {
+  const resolved = await resolveIdentityFilter(userQuery);
+  if (!resolved.active) return { active: false, userIds: null };
+  if (resolved.empty) return { active: true, empty: true, userIds: [] };
+  return { active: true, empty: false, userIds: resolved.objectIds };
 }
 
 const getTransactions = async (req, res) => {
@@ -29,16 +20,25 @@ const getTransactions = async (req, res) => {
     const model = typeof req.query.model === 'string' ? req.query.model.trim() : '';
     const tokenType = typeof req.query.tokenType === 'string' ? req.query.tokenType.trim() : '';
 
+    const userFilter = await resolveUserIdsParam(user);
+    if (userFilter.active && userFilter.empty) {
+      return res.json({
+        ...paginatedResponse({ documents: [], total: 0, page, limit }),
+        range,
+        since,
+      });
+    }
+
     const { documents, total } = await Transaction.list({
       limit,
       skip,
       search,
       since,
-      user,
+      userIds: userFilter.userIds,
       model,
       tokenType,
     });
-    const enriched = await attachUserInfo(documents);
+    const enriched = await attachUserIdentity(documents, 'user');
     return res.json({
       ...paginatedResponse({ documents: enriched, total, page, limit }),
       range,
@@ -54,7 +54,19 @@ const getTransactionsSummary = async (req, res) => {
     const range = normalizeRange(req.query.range);
     const since = resolveSince(range);
     const user = typeof req.query.user === 'string' ? req.query.user.trim() : '';
-    const data = await Transaction.summary({ since, user });
+    const userFilter = await resolveUserIdsParam(user);
+    if (userFilter.active && userFilter.empty) {
+      return res.json({
+        range,
+        since,
+        totals: { totalTokens: 0, count: 0 },
+        byType: [],
+        byModel: [],
+        byUser: [],
+      });
+    }
+
+    const data = await Transaction.summary({ since, userIds: userFilter.userIds });
     return res.json({
       range,
       since,

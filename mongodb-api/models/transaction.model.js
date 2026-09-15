@@ -7,15 +7,11 @@ function txRead() {
   return getReadDB().collection(COLLECTION);
 }
 
-function buildMatch({ since = null, user = '', model = '', tokenType = '' } = {}) {
+function buildMatch({ since = null, userIds = null, model = '', tokenType = '' } = {}) {
   const match = {};
   if (since) match.createdAt = { $gte: since };
-  if (user) {
-    if (ObjectId.isValid(user)) {
-      match.user = new ObjectId(user);
-    } else {
-      match.user = user;
-    }
+  if (Array.isArray(userIds)) {
+    match.user = { $in: userIds };
   }
   if (model) match.model = model;
   if (tokenType) match.tokenType = tokenType;
@@ -27,11 +23,11 @@ async function list({
   skip = 0,
   search = '',
   since = null,
-  user = '',
+  userIds = null,
   model = '',
   tokenType = '',
 } = {}) {
-  const filter = buildMatch({ since, user, model, tokenType });
+  const filter = buildMatch({ since, userIds, model, tokenType });
   if (search) {
     const regex = { $regex: search, $options: 'i' };
     filter.$or = [
@@ -49,8 +45,8 @@ async function list({
   return { documents, total };
 }
 
-async function summary({ since = null, user = '' } = {}) {
-  const match = buildMatch({ since, user });
+async function summary({ since = null, userIds = null } = {}) {
+  const match = buildMatch({ since, userIds });
   const pipeline = [];
   if (Object.keys(match).length) pipeline.push({ $match: match });
 
@@ -103,6 +99,7 @@ async function summary({ since = null, user = '' } = {}) {
             count: 1,
             name: { $arrayElemAt: ['$userInfo.name', 0] },
             email: { $arrayElemAt: ['$userInfo.email', 0] },
+            username: { $arrayElemAt: ['$userInfo.username', 0] },
           },
         },
       ])

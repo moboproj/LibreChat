@@ -348,6 +348,7 @@ export function useUsers() {
       });
       const rows = response.data.documents || [];
       const csv = toCsv(rows, [
+        { key: 'username', label: 'Username', value: (row) => row.username || '' },
         { key: 'email', label: 'Email' },
         { key: 'name', label: 'Nombre', value: (row) => row.name || '' },
         { key: 'role', label: 'Rol', value: (row) => row.role || 'USER' },

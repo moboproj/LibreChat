@@ -9,30 +9,35 @@
     </div>
 
     <UiCard>
-      <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center">
+      <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
         <input
           v-model="searchQuery"
           class="ui-input sm:max-w-sm"
           type="search"
-          placeholder="Buscar título, conversationId, user, model…"
+          placeholder="Buscar título, conversationId…"
         />
-        <div class="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-          <input
-            v-model="userFilter"
-            class="ui-input sm:max-w-xs"
-            type="text"
-            placeholder="Filtrar por user id…"
-            @keyup.enter="applyUserFilter"
-          />
-          <button type="button" class="ui-btn-secondary w-full sm:w-auto" @click="applyUserFilter">
-            Filtrar user
-          </button>
-        </div>
+        <input
+          v-model="userFilter"
+          class="ui-input sm:max-w-xs"
+          type="text"
+          placeholder="Filtrar por username, correo o nombre…"
+          @keyup.enter="applyFilters"
+        />
+        <input
+          v-model="endpointModelFilter"
+          class="ui-input sm:max-w-xs"
+          type="text"
+          placeholder="Filtrar Endpoint / model…"
+          @keyup.enter="applyFilters"
+        />
+        <button type="button" class="ui-btn-secondary w-full sm:w-auto" @click="applyFilters">
+          Aplicar filtros
+        </button>
         <p class="text-xs text-[var(--text-muted)]">{{ total }} conversación(es)</p>
       </div>
 
       <div v-if="loading" class="py-2">
-        <TableSkeleton :rows="pageSize" :cols="5" />
+        <TableSkeleton :rows="pageSize" :cols="6" />
       </div>
       <div
         v-else-if="!conversations.length"
@@ -43,7 +48,7 @@
 
       <template v-else>
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[720px] border-collapse text-left text-sm">
+          <table class="w-full min-w-[960px] border-collapse text-left text-sm">
             <thead>
               <tr
                 class="border-b text-xs uppercase tracking-wide text-[var(--text-muted)]"
@@ -51,6 +56,8 @@
               >
                 <th class="px-2 py-2 font-medium">Título</th>
                 <th class="px-2 py-2 font-medium">Usuario</th>
+                <th class="px-2 py-2 font-medium">Nombre</th>
+                <th class="px-2 py-2 font-medium">Correo</th>
                 <th class="hidden px-2 py-2 font-medium md:table-cell">Endpoint / Model</th>
                 <th class="hidden px-2 py-2 font-medium sm:table-cell">Actualizado</th>
                 <th class="px-2 py-2 font-medium text-right">Acciones</th>
@@ -66,11 +73,17 @@
                 <td class="max-w-[220px] truncate px-2 py-3 text-[var(--text)]">
                   {{ convo.title || 'Sin título' }}
                 </td>
-                <td class="max-w-[140px] truncate px-2 py-3 font-mono text-xs text-[var(--text-muted)]">
-                  {{ convo.user || '—' }}
+                <td class="px-2 py-3 font-mono text-xs text-[var(--text)]">
+                  {{ convo.userUsername || '—' }}
                 </td>
-                <td class="hidden px-2 py-3 text-[var(--text-muted)] md:table-cell">
-                  {{ convo.endpoint || '—' }} / {{ convo.model || '—' }}
+                <td class="max-w-[140px] truncate px-2 py-3 text-[var(--text-muted)]">
+                  {{ convo.userName || '—' }}
+                </td>
+                <td class="max-w-[180px] truncate px-2 py-3 text-[var(--text-muted)]">
+                  {{ convo.userEmail || '—' }}
+                </td>
+                <td class="hidden max-w-[260px] truncate px-2 py-3 text-[var(--text-muted)] md:table-cell">
+                  {{ convo.endpointModelLabel || '—' }}
                 </td>
                 <td class="hidden px-2 py-3 text-[var(--text-muted)] sm:table-cell">
                   {{ formatDate(convo.updatedAt || convo.createdAt) }}
@@ -124,10 +137,14 @@
           Cargando mensajes…
         </div>
         <template v-else>
-          <div class="mb-4 grid grid-cols-1 gap-2 text-xs text-[var(--text-muted)] sm:grid-cols-3">
-            <p>User: {{ selectedConversation?.user || '—' }}</p>
-            <p>Endpoint: {{ selectedConversation?.endpoint || '—' }}</p>
-            <p>Model: {{ selectedConversation?.model || '—' }}</p>
+          <div class="mb-4 grid grid-cols-1 gap-2 text-xs text-[var(--text-muted)] sm:grid-cols-2">
+            <p>
+              Usuario:
+              {{ selectedConversation?.userUsername || '—' }}
+              · {{ selectedConversation?.userName || '—' }}
+              · {{ selectedConversation?.userEmail || '—' }}
+            </p>
+            <p>Endpoint / Model: {{ selectedConversation?.endpointModelLabel || '—' }}</p>
           </div>
           <p class="mb-2 text-xs text-[var(--text-muted)]">
             Mensajes ({{ messagesTotal }})
@@ -180,6 +197,7 @@ const {
   messagesTotal,
   showDetail,
   userFilter,
+  endpointModelFilter,
   page,
   pageSize,
   total,
@@ -192,7 +210,7 @@ const {
   loadConversations,
   openDetail,
   closeDetail,
-  applyUserFilter,
+  applyFilters,
 } = useConversations();
 
 onMounted(() => {

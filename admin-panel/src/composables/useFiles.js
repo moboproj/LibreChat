@@ -12,6 +12,8 @@ export function useFiles() {
   const selectedFile = ref(null);
   const showDetail = ref(false);
   const userFilter = ref('');
+  const sortBy = ref('');
+  const sortDir = ref('desc');
 
   const pagination = useServerPagination({
     defaultPageSize: 10,
@@ -26,6 +28,8 @@ export function useFiles() {
         limit: pagination.pageSize.value,
         search: pagination.searchDebounced.value,
         user: userFilter.value.trim(),
+        sortBy: sortBy.value,
+        sortDir: sortDir.value,
       });
       files.value = response.data.documents || [];
       pagination.applyMeta(response.data);
@@ -37,6 +41,17 @@ export function useFiles() {
   }
 
   function applyUserFilter() {
+    pagination.page.value = 1;
+    loadFiles();
+  }
+
+  function toggleBytesSort() {
+    if (sortBy.value !== 'bytes') {
+      sortBy.value = 'bytes';
+      sortDir.value = 'desc';
+    } else {
+      sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc';
+    }
     pagination.page.value = 1;
     loadFiles();
   }
@@ -83,6 +98,8 @@ export function useFiles() {
     selectedFile,
     showDetail,
     userFilter,
+    sortBy,
+    sortDir,
     page: pagination.page,
     pageSize: pagination.pageSize,
     total: pagination.total,
@@ -94,6 +111,7 @@ export function useFiles() {
     setPageSize: pagination.setPageSize,
     loadFiles,
     applyUserFilter,
+    toggleBytesSort,
     openDetail,
     closeDetail,
     formatBytes,

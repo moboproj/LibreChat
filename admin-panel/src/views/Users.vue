@@ -41,13 +41,13 @@
           v-model="searchQuery"
           class="ui-input sm:max-w-sm"
           type="search"
-          placeholder="Buscar por email o nombre…"
+          placeholder="Buscar por username, email o nombre…"
         />
         <p class="text-xs text-[var(--text-muted)]">{{ total }} resultado(s)</p>
       </div>
 
       <div v-if="loading" class="py-2">
-        <TableSkeleton :rows="pageSize" :cols="5" />
+        <TableSkeleton :rows="pageSize" :cols="6" />
       </div>
 
       <div v-else-if="!users.length" class="py-16 text-center text-sm text-[var(--text-muted)]">
@@ -56,7 +56,7 @@
 
       <template v-else>
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[640px] border-collapse text-left text-sm">
+          <table class="w-full min-w-[720px] border-collapse text-left text-sm">
             <thead>
               <tr
                 class="border-b text-xs uppercase tracking-wide text-[var(--text-muted)]"
@@ -69,6 +69,7 @@
                     @change="toggleSelectPage"
                   />
                 </th>
+                <th class="px-2 py-2 font-medium">Username</th>
                 <th class="px-2 py-2 font-medium">Email</th>
                 <th class="px-2 py-2 font-medium">Nombre</th>
                 <th class="px-2 py-2 font-medium">Rol</th>
@@ -90,6 +91,9 @@
                     :checked="selectedIds.includes(user._id)"
                     @change="toggleSelect(user._id)"
                   />
+                </td>
+                <td class="px-2 py-3 font-mono text-xs text-[var(--text)]">
+                  {{ user.username || '—' }}
                 </td>
                 <td class="max-w-[140px] truncate px-2 py-3 text-[var(--text)] sm:max-w-none">
                   {{ user.email }}

@@ -1,6 +1,10 @@
 const Stats = require('../models/stats.model');
 const User = require('../models/user.model');
-const { sendError, fromException } = require('../utils/httpError');
+const { fromException } = require('../utils/httpError');
+const {
+  resolveMessagesByModelRows,
+  resolveMessagesByEndpointRows,
+} = require('../services/endpointLabels');
 
 function resolveSince(range) {
   const now = Date.now();
@@ -41,8 +45,8 @@ const getCollectionsStats = async (req, res) => {
       newUsersLast30Days,
       messagesByDay,
       activeUsersByDay,
-      messagesByModel,
-      messagesByEndpoint,
+      messagesByModelRaw,
+      messagesByEndpointRaw,
       tokensByType,
       topUsersByTokens,
     ] = await Promise.all([
@@ -55,6 +59,9 @@ const getCollectionsStats = async (req, res) => {
       Stats.tokensByType(since),
       Stats.topUsersByTokens(since),
     ]);
+
+    const messagesByModel = await resolveMessagesByModelRows(messagesByModelRaw);
+    const messagesByEndpoint = resolveMessagesByEndpointRows(messagesByEndpointRaw);
 
     return res.json({
       range,
@@ -84,5 +91,4 @@ const getCollectionsStats = async (req, res) => {
 
 module.exports = {
   getCollectionsStats,
-  sendError,
 };

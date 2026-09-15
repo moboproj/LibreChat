@@ -14,6 +14,7 @@ export function useConversations() {
   const messagesTotal = ref(0);
   const showDetail = ref(false);
   const userFilter = ref('');
+  const endpointModelFilter = ref('');
 
   const pagination = useServerPagination({
     defaultPageSize: 10,
@@ -28,6 +29,7 @@ export function useConversations() {
         limit: pagination.pageSize.value,
         search: pagination.searchDebounced.value,
         user: userFilter.value.trim(),
+        endpointModel: endpointModelFilter.value.trim(),
       });
       conversations.value = response.data.documents || [];
       pagination.applyMeta(response.data);
@@ -66,7 +68,7 @@ export function useConversations() {
     messagesTotal.value = 0;
   }
 
-  function applyUserFilter() {
+  function applyFilters() {
     pagination.resetPage();
     return loadConversations();
   }
@@ -80,6 +82,7 @@ export function useConversations() {
     messagesTotal,
     showDetail,
     userFilter,
+    endpointModelFilter,
     page: pagination.page,
     pageSize: pagination.pageSize,
     total: pagination.total,
@@ -92,6 +95,6 @@ export function useConversations() {
     loadConversations,
     openDetail,
     closeDetail,
-    applyUserFilter,
+    applyFilters,
   };
 }

@@ -1,12 +1,19 @@
 import http from './http';
 
-export function listConversations({ page = 1, limit = 10, search = '', user = '' } = {}) {
+export function listConversations({
+  page = 1,
+  limit = 10,
+  search = '',
+  user = '',
+  endpointModel = '',
+} = {}) {
   return http.get('/api/conversations', {
     params: {
       page,
       limit,
       search: search || undefined,
       user: user || undefined,
+      endpointModel: endpointModel || undefined,
     },
   });
 }

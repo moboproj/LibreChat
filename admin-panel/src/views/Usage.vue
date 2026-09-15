@@ -3,7 +3,7 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p class="text-xs uppercase tracking-wider text-[var(--text-muted)]">Uso</p>
-        <h2 class="text-xl font-semibold text-[var(--text)]">Tokens / Transacciones</h2>
+        <h2 class="text-xl font-semibold text-[var(--text)]">Uso / Tokens</h2>
         <p class="text-sm text-[var(--text-muted)]">
           Resumen y detalle de consumo · solo lectura
         </p>
@@ -34,7 +34,7 @@
         </p>
       </UiCard>
       <UiCard padding="sm">
-        <p class="text-[10px] uppercase text-[var(--text-muted)]">Transacciones</p>
+        <p class="text-[10px] uppercase text-[var(--text-muted)]">Registros de consumo</p>
         <p class="text-xl font-semibold text-[var(--text)]">
           {{ summaryLoading ? '…' : formatNumber(summary.totals.count) }}
         </p>
@@ -151,7 +151,7 @@
             >
               <td class="px-2 py-3 text-[var(--text-muted)]">{{ i + 1 }}</td>
               <td class="max-w-[220px] truncate px-2 py-3 text-[var(--text)]">
-                {{ user.email || user.name || user._id }}
+                {{ user.username || user.email || user.name || user._id }}
               </td>
               <td class="px-2 py-3 text-right font-mono text-[var(--text)]">
                 {{ formatNumber(user.totalTokens) }}
@@ -193,30 +193,32 @@
           v-model="userFilter"
           class="ui-input sm:max-w-xs"
           type="text"
-          placeholder="Filtrar por user id…"
+          placeholder="Filtrar por username, correo o nombre…"
           @keyup.enter="applyUserFilter"
         />
         <button type="button" class="ui-btn-secondary w-full sm:w-auto" @click="applyUserFilter">
           Aplicar filtro
         </button>
-        <p class="text-xs text-[var(--text-muted)]">{{ total }} transacción(es)</p>
+        <p class="text-xs text-[var(--text-muted)]">{{ total }} registro(s) de consumo</p>
       </div>
 
       <div v-if="loading" class="py-2">
-        <TableSkeleton :rows="pageSize" :cols="5" />
+        <TableSkeleton :rows="pageSize" :cols="6" />
       </div>
       <div v-else-if="!transactions.length" class="py-16 text-center text-sm text-[var(--text-muted)]">
-        No hay transacciones
+        No hay registros de consumo
       </div>
       <template v-else>
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[760px] border-collapse text-left text-sm">
+          <table class="w-full min-w-[900px] border-collapse text-left text-sm">
             <thead>
               <tr
                 class="border-b text-xs uppercase tracking-wide text-[var(--text-muted)]"
                 style="border-color: var(--border)"
               >
                 <th class="px-2 py-2 font-medium">Usuario</th>
+                <th class="px-2 py-2 font-medium">Nombre</th>
+                <th class="px-2 py-2 font-medium">Correo</th>
                 <th class="px-2 py-2 font-medium">Tipo</th>
                 <th class="px-2 py-2 font-medium">Model</th>
                 <th class="px-2 py-2 font-medium">Tokens</th>
@@ -230,8 +232,14 @@
                 class="border-b"
                 style="border-color: var(--border)"
               >
-                <td class="max-w-[180px] truncate px-2 py-3 text-[var(--text)]">
-                  {{ tx.userEmail || tx.userName || tx.user || '—' }}
+                <td class="px-2 py-3 font-mono text-xs text-[var(--text)]">
+                  {{ tx.userUsername || '—' }}
+                </td>
+                <td class="max-w-[140px] truncate px-2 py-3 text-[var(--text-muted)]">
+                  {{ tx.userName || '—' }}
+                </td>
+                <td class="max-w-[180px] truncate px-2 py-3 text-[var(--text-muted)]">
+                  {{ tx.userEmail || '—' }}
                 </td>
                 <td class="px-2 py-3 text-[var(--text-muted)]">{{ tx.tokenType || '—' }}</td>
                 <td class="px-2 py-3 text-[var(--text-muted)]">{{ tx.model || '—' }}</td>

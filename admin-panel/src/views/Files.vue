@@ -18,17 +18,17 @@
           v-model="userFilter"
           class="ui-input sm:max-w-xs"
           type="text"
-          placeholder="Filtrar por user id…"
+          placeholder="Filtrar por username, correo o nombre…"
           @keyup.enter="applyUserFilter"
         />
         <button type="button" class="ui-btn-secondary w-full sm:w-auto" @click="applyUserFilter">
-          Filtrar user
+          Filtrar usuario
         </button>
         <p class="text-xs text-[var(--text-muted)]">{{ total }} archivo(s)</p>
       </div>
 
       <div v-if="loading" class="py-2">
-        <TableSkeleton :rows="pageSize" :cols="5" />
+        <TableSkeleton :rows="pageSize" :cols="6" />
       </div>
       <div v-else-if="!files.length" class="py-16 text-center text-sm text-[var(--text-muted)]">
         No hay archivos
@@ -36,7 +36,7 @@
 
       <template v-else>
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[720px] border-collapse text-left text-sm">
+          <table class="w-full min-w-[960px] border-collapse text-left text-sm">
             <thead>
               <tr
                 class="border-b text-xs uppercase tracking-wide text-[var(--text-muted)]"
@@ -44,8 +44,19 @@
               >
                 <th class="px-2 py-2 font-medium">Archivo</th>
                 <th class="px-2 py-2 font-medium">Usuario</th>
+                <th class="px-2 py-2 font-medium">Nombre</th>
+                <th class="px-2 py-2 font-medium">Correo</th>
                 <th class="hidden px-2 py-2 font-medium sm:table-cell">Tipo</th>
-                <th class="hidden px-2 py-2 font-medium md:table-cell">Tamaño</th>
+                <th class="hidden px-2 py-2 font-medium md:table-cell">
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-[var(--text)]"
+                    @click="toggleBytesSort"
+                  >
+                    Tamaño
+                    <span v-if="sortBy === 'bytes'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
+                  </button>
+                </th>
                 <th class="px-2 py-2 font-medium text-right">Acciones</th>
               </tr>
             </thead>
@@ -59,8 +70,14 @@
                 <td class="max-w-[220px] truncate px-2 py-3 text-[var(--text)]">
                   {{ file.filename || file.file_id || 'Sin nombre' }}
                 </td>
-                <td class="max-w-[160px] truncate px-2 py-3 text-[var(--text-muted)]">
-                  {{ file.userEmail || file.userName || file.user || '—' }}
+                <td class="px-2 py-3 font-mono text-xs text-[var(--text)]">
+                  {{ file.userUsername || '—' }}
+                </td>
+                <td class="max-w-[140px] truncate px-2 py-3 text-[var(--text-muted)]">
+                  {{ file.userName || '—' }}
+                </td>
+                <td class="max-w-[180px] truncate px-2 py-3 text-[var(--text-muted)]">
+                  {{ file.userEmail || '—' }}
                 </td>
                 <td class="hidden px-2 py-3 text-[var(--text-muted)] sm:table-cell">
                   {{ file.type || '—' }}
@@ -110,7 +127,15 @@
         <div v-else-if="selectedFile" class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           <div>
             <p class="ui-label">Usuario</p>
-            <p>{{ selectedFile.userEmail || selectedFile.user || '—' }}</p>
+            <p>{{ selectedFile.userUsername || '—' }}</p>
+          </div>
+          <div>
+            <p class="ui-label">Nombre</p>
+            <p>{{ selectedFile.userName || '—' }}</p>
+          </div>
+          <div>
+            <p class="ui-label">Correo</p>
+            <p>{{ selectedFile.userEmail || '—' }}</p>
           </div>
           <div>
             <p class="ui-label">Tipo</p>
@@ -158,6 +183,8 @@ const {
   selectedFile,
   showDetail,
   userFilter,
+  sortBy,
+  sortDir,
   page,
   pageSize,
   total,
@@ -169,6 +196,7 @@ const {
   setPageSize,
   loadFiles,
   applyUserFilter,
+  toggleBytesSort,
   openDetail,
   closeDetail,
   formatBytes,
