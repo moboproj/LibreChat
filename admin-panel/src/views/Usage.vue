@@ -131,6 +131,14 @@
       </div>
       <div v-else class="overflow-x-auto">
         <table class="w-full min-w-[860px] border-collapse text-left text-sm">
+          <thead>
+            <tr
+              class="border-b text-xs uppercase tracking-wide text-[var(--text-muted)]"
+              style="border-color: var(--border)"
+            >
+              <th class="px-2 py-2 font-medium">#</th>
+              <th class="px-2 py-2 font-medium">Usuario</th>
+              <th class="px-2 py-2 font-medium">Nombre</th>
               <th class="px-2 py-2 font-medium">Correo</th>
               <th class="px-2 py-2 font-medium text-right">Tokens</th>
               <th class="px-2 py-2 font-medium">Participación</th>
