@@ -4,6 +4,7 @@ const {
   startOpenIdLogin,
   openIdCallback,
   exchangeOpenIdCode,
+  refreshOpenIdSso,
   openIdLogoutRedirect,
   openIdLogoutComplete,
 } = require('../controllers/authOpenId.controller');
@@ -20,6 +21,7 @@ router.post('/verify-password', login);
 router.get('/openid', startOpenIdLogin);
 router.get('/openid/callback', openIdCallback);
 router.post('/openid/exchange', exchangeOpenIdCode);
+router.post('/openid/refresh-sso', requireAuth, refreshOpenIdSso);
 router.get('/openid/logout', openIdLogoutRedirect);
 router.post('/openid/logout', openIdLogoutRedirect);
 router.get('/openid/logout-complete', openIdLogoutComplete);

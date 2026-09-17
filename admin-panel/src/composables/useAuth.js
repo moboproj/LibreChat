@@ -11,7 +11,14 @@ const loginError = ref('');
 const openidEnabled = ref(false);
 const openidButtonLabel = ref('Iniciar sesión con SSO');
 
-function persistSession({ accessToken, refreshToken, user, ssoAccessToken, ssoIdToken }) {
+function persistSession({
+  accessToken,
+  refreshToken,
+  user,
+  ssoAccessToken,
+  ssoRefreshToken,
+  ssoIdToken,
+}) {
   isAuthenticated.value = true;
   currentUser.value = user;
   localStorage.setItem('admin_session', 'true');
@@ -22,6 +29,11 @@ function persistSession({ accessToken, refreshToken, user, ssoAccessToken, ssoId
     localStorage.setItem('ssoAccessToken', ssoAccessToken);
   } else {
     localStorage.removeItem('ssoAccessToken');
+  }
+  if (ssoRefreshToken) {
+    localStorage.setItem('ssoRefreshToken', ssoRefreshToken);
+  } else {
+    localStorage.removeItem('ssoRefreshToken');
   }
   if (ssoIdToken) {
     localStorage.setItem('ssoIdToken', ssoIdToken);
@@ -38,6 +50,7 @@ function clearSession() {
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('currentUser');
   localStorage.removeItem('ssoAccessToken');
+  localStorage.removeItem('ssoRefreshToken');
   localStorage.removeItem('ssoIdToken');
 }
 
@@ -96,6 +109,7 @@ export function useAuth() {
       refreshToken: response.data.refreshToken,
       user: response.data.user,
       ssoAccessToken: response.data.ssoAccessToken,
+      ssoRefreshToken: response.data.ssoRefreshToken,
       ssoIdToken: response.data.ssoIdToken,
     });
   }

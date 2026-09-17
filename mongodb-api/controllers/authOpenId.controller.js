@@ -15,6 +15,7 @@ const {
   claimsFromTokenSet,
   buildEndSessionUrl,
   createPkcePair,
+  refreshSsoTokenSet,
 } = require('../services/openid');
 const { putPending, takePending, putExchange, takeExchange } = require('../services/openidStore');
 const { readIdTokenCookie, setIdTokenCookie, clearIdTokenCookie } = require('../utils/ssoCookies');
@@ -142,6 +143,7 @@ const openIdCallback = async (req, res) => {
       accessToken,
       refreshToken,
       ssoAccessToken: tokenSet.access_token || null,
+      ssoRefreshToken: tokenSet.refresh_token || null,
       ssoIdToken: tokenSet.id_token || null,
       user: {
         id: user._id,
@@ -195,6 +197,33 @@ const exchangeOpenIdCode = async (req, res) => {
   }
 };
 
+const refreshOpenIdSso = async (req, res) => {
+  try {
+    assertOpenIdConfigured();
+    const refreshToken =
+      (typeof req.body?.ssoRefreshToken === 'string' && req.body.ssoRefreshToken.trim()) ||
+      (typeof req.body?.refreshToken === 'string' && req.body.refreshToken.trim()) ||
+      '';
+
+    const tokenSet = await refreshSsoTokenSet(refreshToken);
+    return res.json({
+      valid: true,
+      ssoAccessToken: tokenSet.access_token || null,
+      ssoRefreshToken: tokenSet.refresh_token || refreshToken,
+      ssoIdToken: tokenSet.id_token || null,
+    });
+  } catch (error) {
+    console.error('[auth/openid] refresh-sso failed:', error.message);
+    return res.status(error.status || 401).json({
+      valid: false,
+      code: error.code || 'SSO_REFRESH_FAILED',
+      message:
+        error.message ||
+        'Token SSO expirado. Cierra sesión e inicia de nuevo para vincular usuarios.',
+    });
+  }
+};
+
 const openIdLogoutRedirect = async (req, res) => {
   const wantsJson =
     req.is('application/json') ||
@@ -243,6 +272,7 @@ module.exports = {
   startOpenIdLogin,
   openIdCallback,
   exchangeOpenIdCode,
+  refreshOpenIdSso,
   openIdLogoutRedirect,
   openIdLogoutComplete,
 };

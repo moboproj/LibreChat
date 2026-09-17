@@ -54,11 +54,16 @@ async function delegatedFetch(pathname, { method = 'GET', body, accessToken } = 
   }
 
   if (!response.ok) {
-    throw new SsoDelegatedError(
-      data.error || data.detail || data.message || `Error SSO delegado (${response.status})`,
-      response.status >= 400 && response.status < 600 ? response.status : 502,
-      data,
-    );
+    const message =
+      data.error || data.detail || data.message || `Error SSO delegado (${response.status})`;
+    const status = response.status >= 400 && response.status < 600 ? response.status : 502;
+    const err = new SsoDelegatedError(message, status, data);
+    if (status === 401) {
+      err.code = 'SSO_TOKEN_EXPIRED';
+      err.message =
+        'Token SSO inválido o expirado. Se intentará renovar; si falla, vuelve a iniciar sesión.';
+    }
+    throw err;
   }
 
   return data;

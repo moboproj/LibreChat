@@ -31,7 +31,10 @@ const getSsoRoles = async (req, res) => {
     });
   } catch (error) {
     if (error instanceof SsoDelegatedError) {
-      return sendError(res, error.status, error.message, { details: error.details });
+      return sendError(res, error.status, error.message, {
+        details: error.details,
+        code: error.code || undefined,
+      });
     }
     return fromException(res, error);
   }
@@ -44,7 +47,10 @@ const getSsoEmployee = async (req, res) => {
     return res.json(data);
   } catch (error) {
     if (error instanceof SsoDelegatedError) {
-      return sendError(res, error.status, error.message, { details: error.details });
+      return sendError(res, error.status, error.message, {
+        details: error.details,
+        code: error.code || undefined,
+      });
     }
     return fromException(res, error);
   }
@@ -115,7 +121,10 @@ const linkSsoUser = async (req, res) => {
     });
   } catch (error) {
     if (error instanceof SsoDelegatedError) {
-      return sendError(res, error.status, error.message, { details: error.details });
+      return sendError(res, error.status, error.message, {
+        details: error.details,
+        code: error.code || undefined,
+      });
     }
     return fromException(res, error);
   }

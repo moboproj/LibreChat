@@ -8,6 +8,14 @@ export function getErrorMessage(error, fallback = 'Error inesperado') {
 
 export function getErrorTitle(error, fallback = 'Error') {
   const status = error?.response?.status;
+  const code = error?.response?.data?.code;
+  if (
+    code === 'SSO_TOKEN_EXPIRED' ||
+    code === 'SSO_REFRESH_FAILED' ||
+    code === 'SSO_REFRESH_MISSING'
+  ) {
+    return 'Sesión SSO expirada';
+  }
   if (!status) return fallback;
   if (status >= 500) return `Error del servidor (${status})`;
   if (status === 404) return 'No encontrado';

@@ -67,6 +67,28 @@ async function exchangeAuthorizationCode({ code, state, codeVerifier }) {
   return client.callback(config.openidCallbackUrl, params, checks);
 }
 
+async function refreshSsoTokenSet(refreshToken) {
+  const token = String(refreshToken || '').trim();
+  if (!token) {
+    const error = new Error('Falta refresh token SSO');
+    error.status = 400;
+    error.code = 'SSO_REFRESH_MISSING';
+    throw error;
+  }
+
+  const client = await getClient();
+  try {
+    return await client.refresh(token);
+  } catch (refreshError) {
+    const error = new Error(
+      refreshError.message || 'No se pudo refrescar el token SSO. Vuelve a iniciar sesión.',
+    );
+    error.status = 401;
+    error.code = 'SSO_REFRESH_FAILED';
+    throw error;
+  }
+}
+
 function claimsFromTokenSet(tokenSet) {
   const claims = typeof tokenSet.claims === 'function' ? tokenSet.claims() : {};
   const email =
@@ -128,6 +150,7 @@ module.exports = {
   getClient,
   buildAuthorization,
   exchangeAuthorizationCode,
+  refreshSsoTokenSet,
   claimsFromTokenSet,
   buildEndSessionUrl,
   createPkcePair,
